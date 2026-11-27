@@ -1,8 +1,10 @@
 
+import re
+import unicodedata
+from io import BytesIO
+
 import pandas as pd
 import streamlit as st
-
-from io import BytesIO
 
 from modules.github_storage import (
     descargar_archivo_github,
@@ -18,32 +20,73 @@ CENTRO_PUNTA_TEATINOS = "E026"
 
 
 # =========================================================
-# LIMPIEZA DE DATOS
+# NORMALIZACIÓN DE TEXTO
 # =========================================================
-
-def limpiar_codigo(valor):
-
-    if pd.isna(valor):
-        return ""
-
-    codigo = str(valor).strip()
-
-    if codigo.endswith(".0"):
-        codigo = codigo[:-2]
-
-    return codigo
-
 
 def normalizar_texto(valor):
 
     if pd.isna(valor):
         return ""
 
-    return (
-        str(valor)
-        .strip()
-        .replace("\n", " ")
+    texto = str(valor).strip()
+    texto = texto.replace("\n", " ")
+    texto = texto.replace("\xa0", " ")
+
+    texto = re.sub(r"\s+", " ", texto)
+
+    return texto
+
+
+def normalizar_nombre_columna(valor):
+
+    texto = normalizar_texto(valor).upper()
+
+    texto = unicodedata.normalize(
+        "NFKD",
+        texto
     )
+
+    texto = "".join(
+        caracter
+        for caracter in texto
+        if not unicodedata.combining(caracter)
+    )
+
+    return texto.strip()
+
+
+def normalizar_centro(valor):
+
+    if pd.isna(valor):
+        return ""
+
+    centro = normalizar_texto(valor).upper()
+
+    centro = centro.replace(" ", "")
+
+    centro = re.sub(
+        r"\.0$",
+        "",
+        centro
+    )
+
+    return centro
+
+
+def limpiar_codigo(valor):
+
+    if pd.isna(valor):
+        return ""
+
+    codigo = normalizar_texto(valor)
+
+    codigo = re.sub(
+        r"\.0$",
+        "",
+        codigo
+    )
+
+    return codigo
 
 
 # =========================================================
@@ -55,32 +98,65 @@ def detectar_encabezado(datos):
     for indice, fila in datos.iterrows():
 
         valores = [
-            normalizar_texto(valor).upper()
+            normalizar_nombre_columna(valor)
             for valor in fila.tolist()
         ]
 
-        tiene_centro = "CENTRO" in valores
-        tiene_material = "MATERIAL" in valores
-
-        tiene_descripcion = any(
-            "DESCRIPCIÓN DEL MATERIAL" in valor
-            or "DESCRIPCION DEL MATERIAL" in valor
+        tiene_centro = any(
+            valor == "CENTRO"
             for valor in valores
         )
 
-        if (
-            tiene_centro
-            and tiene_material
-            and tiene_descripcion
-        ):
+        tiene_material = any(
+            valor == "MATERIAL"
+            for valor in valores
+        )
+
+        # No exigimos que exista una descripción.
+        # Algunas hojas pueden tener encabezados distintos.
+
+        if tiene_centro and tiene_material:
 
             return indice
 
     raise ValueError(
-        "No se pudo encontrar la fila de encabezados. "
-        "Se necesitan las columnas Centro, Material "
-        "y Descripción del material."
+        "No se encontró una fila de encabezados "
+        "que contenga las columnas Centro y Material."
     )
+
+
+# =========================================================
+# NORMALIZAR ENCABEZADOS
+# =========================================================
+
+def normalizar_encabezados(datos):
+
+    equivalencias = {
+        "CENTRO": "Centro",
+        "MATERIAL": "Material",
+        "DESCRIPCION DEL MATERIAL": "Descripción del material",
+        "DESCRIPCION MATERIAL": "Descripción del material"
+    }
+
+    nuevas_columnas = []
+
+    for columna in datos.columns:
+
+        nombre = normalizar_texto(columna)
+
+        nombre_normalizado = normalizar_nombre_columna(
+            nombre
+        )
+
+        if nombre_normalizado in equivalencias:
+
+            nombre = equivalencias[nombre_normalizado]
+
+        nuevas_columnas.append(nombre)
+
+    datos.columns = nuevas_columnas
+
+    return datos
 
 
 # =========================================================
@@ -112,6 +188,7 @@ def leer_hoja_mrp(contenido, nombre_hoja):
 
     datos.columns = encabezados
 
+    # Eliminar columnas sin nombre
     datos = datos.loc[
         :,
         datos.columns != ""
@@ -119,37 +196,9 @@ def leer_hoja_mrp(contenido, nombre_hoja):
 
     datos = datos.dropna(how="all")
 
-    datos.columns = [
-        normalizar_texto(columna)
-        for columna in datos.columns
-    ]
+    datos = normalizar_encabezados(datos)
 
-    return datos.reset_index(drop=True)
-
-
-# =========================================================
-# PREPARAR COLUMNAS
-# =========================================================
-
-def preparar_datos(datos):
-
-    datos = datos.copy()
-
-    # Limpiar centro
-    if "Centro" in datos.columns:
-
-        datos["Centro"] = (
-            datos["Centro"]
-            .astype(str)
-            .str.strip()
-        )
-
-        datos["Centro"] = (
-            datos["Centro"]
-            .str.replace(r"\.0$", "", regex=True)
-        )
-
-    # Limpiar códigos de materiales
+    # Eliminar registros sin material
     if "Material" in datos.columns:
 
         datos["Material"] = (
@@ -157,7 +206,45 @@ def preparar_datos(datos):
             .apply(limpiar_codigo)
         )
 
-    # Limpiar columna Concat, si existe
+        datos = datos[
+            datos["Material"] != ""
+        ].copy()
+
+    return datos.reset_index(drop=True)
+
+
+# =========================================================
+# PREPARAR DATOS
+# =========================================================
+
+def preparar_datos(datos):
+
+    datos = datos.copy()
+
+    datos = normalizar_encabezados(datos)
+
+    if "Centro" not in datos.columns:
+
+        raise ValueError(
+            "La hoja no contiene una columna Centro."
+        )
+
+    if "Material" not in datos.columns:
+
+        raise ValueError(
+            "La hoja no contiene una columna Material."
+        )
+
+    datos["Centro"] = (
+        datos["Centro"]
+        .apply(normalizar_centro)
+    )
+
+    datos["Material"] = (
+        datos["Material"]
+        .apply(limpiar_codigo)
+    )
+
     if "Concat" in datos.columns:
 
         datos["Concat"] = (
@@ -186,7 +273,20 @@ def cargar_mrp():
             "Debes cargarlo desde Administración."
         )
 
-    # Leer hojas
+    if not isinstance(contenido, bytes):
+
+        raise TypeError(
+            "El archivo MRP descargado no está "
+            "en formato binario."
+        )
+
+    if not contenido:
+
+        raise ValueError(
+            "El archivo MRP descargado está vacío."
+        )
+
+    # Leer hojas originales
     ns = leer_hoja_mrp(
         contenido,
         "NS"
@@ -197,22 +297,41 @@ def cargar_mrp():
         "MRP"
     )
 
-    # Preparar información
+    # Preparar datos
     ns = preparar_datos(ns)
     mrp = preparar_datos(mrp)
 
+    # Diagnóstico de centros disponibles
+    centros_ns = sorted(
+        ns["Centro"].dropna().unique().tolist()
+    )
+
+    centros_mrp = sorted(
+        mrp["Centro"].dropna().unique().tolist()
+    )
+
     # Filtrar Punta Teatinos
-    ns = ns[
+    ns_punta = ns[
         ns["Centro"] == CENTRO_PUNTA_TEATINOS
     ].copy()
 
-    mrp = mrp[
+    mrp_punta = mrp[
         mrp["Centro"] == CENTRO_PUNTA_TEATINOS
     ].copy()
 
+    # Comprobar resultados
+    if ns_punta.empty and mrp_punta.empty:
+
+        raise ValueError(
+            "No se encontraron registros del centro "
+            f"{CENTRO_PUNTA_TEATINOS}.\n\n"
+            f"Centros encontrados en hoja NS: {centros_ns}\n"
+            f"Centros encontrados en hoja MRP: {centros_mrp}"
+        )
+
     return (
-        ns.reset_index(drop=True),
-        mrp.reset_index(drop=True)
+        ns_punta.reset_index(drop=True),
+        mrp_punta.reset_index(drop=True)
     )
 
 
