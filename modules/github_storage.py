@@ -1,223 +1,199 @@
-import streamlit as st
-import requests
+
 import base64
+import requests
+import streamlit as st
 
 
-# =====================================================
-# 1. CONFIGURACIÓN
-# =====================================================
-
-API_GITHUB = "https://api.github.com"
-
+# =========================================================
+# CONFIGURACIÓN
+# =========================================================
 
 def obtener_configuracion():
+    """
+    Obtiene las credenciales desde Streamlit Secrets.
+    """
 
     try:
         token = st.secrets["GITHUB_TOKEN"]
         repositorio = st.secrets["GITHUB_REPO"]
+        rama = st.secrets.get("GITHUB_BRANCH", "main")
 
-        rama = st.secrets.get(
-            "GITHUB_BRANCH",
-            "main"
-        )
-
-        if not token or not repositorio:
-            raise ValueError("Configuración incompleta.")
-
-        return {
-            "token": token,
-            "repositorio": repositorio,
-            "rama": rama
-        }
+        return token, repositorio, rama
 
     except Exception as error:
-
-        raise Exception(
-            "No se encontró la configuración de GitHub "
-            "en los Secrets de Streamlit."
+        raise ValueError(
+            "Faltan configuraciones de GitHub en Streamlit Secrets. "
+            "Verifica GITHUB_TOKEN y GITHUB_REPO."
         ) from error
 
 
-# =====================================================
-# 2. ENCABEZADOS DE CONEXIÓN
-# =====================================================
-
 def obtener_headers():
-
-    config = obtener_configuracion()
+    token, _, _ = obtener_configuracion()
 
     return {
-        "Authorization": f"Bearer {config['token']}",
+        "Authorization": f"Bearer {token}",
         "Accept": "application/vnd.github+json",
         "X-GitHub-Api-Version": "2022-11-28"
     }
 
 
-# =====================================================
-# 3. CONSTRUIR URL DEL ARCHIVO
-# =====================================================
-
 def construir_url(ruta):
-
-    config = obtener_configuracion()
-
-    ruta = str(ruta).replace("\\", "/").strip("/")
+    _, repositorio, _ = obtener_configuracion()
 
     return (
-        f"{API_GITHUB}/repos/"
-        f"{config['repositorio']}/contents/{ruta}"
+        f"https://api.github.com/repos/"
+        f"{repositorio}/contents/{ruta}"
     )
 
 
-# =====================================================
-# 4. DESCARGAR ARCHIVO DESDE GITHUB
-# =====================================================
+# =========================================================
+# DESCARGAR ARCHIVOS
+# =========================================================
 
 def descargar_archivo_github(ruta):
+    """
+    Descarga un archivo almacenado en el repositorio.
+    Devuelve sus contenidos en bytes.
+    """
 
-    config = obtener_configuracion()
+    _, _, rama = obtener_configuracion()
 
     url = construir_url(ruta)
 
     parametros = {
-        "ref": config["rama"]
+        "ref": rama
     }
 
     respuesta = requests.get(
         url,
         headers=obtener_headers(),
         params=parametros,
-        timeout=60
+        timeout=30
     )
 
     if respuesta.status_code == 404:
         return None
 
     if respuesta.status_code != 200:
-
         raise Exception(
-            f"Error descargando archivo desde GitHub: "
+            f"Error al descargar {ruta}: "
             f"{respuesta.status_code} - {respuesta.text}"
         )
 
     datos = respuesta.json()
 
     contenido = datos.get("content", "")
-
-    if not contenido:
-        return None
+    contenido = contenido.replace("\n", "")
 
     return base64.b64decode(contenido)
 
 
-# =====================================================
-# 5. SUBIR O ACTUALIZAR ARCHIVO EN GITHUB
-# =====================================================
+# =========================================================
+# SUBIR O ACTUALIZAR ARCHIVOS
+# =========================================================
 
-def subir_archivo_github(archivo, ruta):
+def subir_archivo_github(ruta, contenido, mensaje="Actualización desde dashboard"):
+    """
+    Sube un archivo nuevo o reemplaza uno existente.
+    contenido debe ser de tipo bytes.
+    """
 
-    config = obtener_configuracion()
+    _, _, rama = obtener_configuracion()
 
     url = construir_url(ruta)
 
     headers = obtener_headers()
 
-    # Obtener contenido del archivo
-
-    if hasattr(archivo, "getvalue"):
-
-        contenido = archivo.getvalue()
-
-    elif isinstance(archivo, bytes):
-
-        contenido = archivo
-
-    else:
-
-        raise TypeError(
-            "El archivo debe ser un archivo cargado "
-            "desde Streamlit o contenido binario."
-        )
-
-    contenido_codificado = base64.b64encode(
-        contenido
-    ).decode("utf-8")
-
-    # Comprobar si el archivo ya existe
-
+    # Consultar si el archivo ya existe para obtener su SHA
     respuesta_actual = requests.get(
         url,
         headers=headers,
-        params={"ref": config["rama"]},
-        timeout=60
+        params={"ref": rama},
+        timeout=30
     )
 
-    datos = {
-        "message": f"Actualizar archivo {ruta}",
-        "content": contenido_codificado,
-        "branch": config["rama"]
-    }
-
-    # Si existe, obtener SHA para reemplazarlo
+    sha = None
 
     if respuesta_actual.status_code == 200:
-
-        datos["sha"] = respuesta_actual.json()["sha"]
+        sha = respuesta_actual.json().get("sha")
 
     elif respuesta_actual.status_code != 404:
-
         raise Exception(
-            "No se pudo comprobar el archivo en GitHub: "
-            f"{respuesta_actual.status_code} - "
-            f"{respuesta_actual.text}"
+            f"No se pudo verificar el archivo {ruta}: "
+            f"{respuesta_actual.status_code} - {respuesta_actual.text}"
         )
 
-    # Subir archivo
+    # Convertir el archivo a Base64
+    contenido_base64 = base64.b64encode(contenido).decode("utf-8")
+
+    datos = {
+        "message": mensaje,
+        "content": contenido_base64,
+        "branch": rama
+    }
+
+    if sha:
+        datos["sha"] = sha
 
     respuesta = requests.put(
         url,
         headers=headers,
         json=datos,
-        timeout=120
+        timeout=60
     )
 
     if respuesta.status_code not in (200, 201):
-
         raise Exception(
-            "Error al guardar el archivo en GitHub: "
-            f"{respuesta.status_code} - "
-            f"{respuesta.text}"
+            f"Error al guardar {ruta}: "
+            f"{respuesta.status_code} - {respuesta.text}"
         )
 
-    return respuesta.json()
+    return True
 
 
-# =====================================================
-# 6. VERIFICAR CONEXIÓN
-# =====================================================
+# =========================================================
+# VERIFICAR CONEXIÓN
+# =========================================================
 
 def verificar_conexion_github():
+    """
+    Comprueba que el token y el repositorio sean accesibles.
+    """
 
-    config = obtener_configuracion()
+    try:
+        _, repositorio, _ = obtener_configuracion()
 
-    url = (
-        f"{API_GITHUB}/repos/"
-        f"{config['repositorio']}"
-    )
+        url = f"https://api.github.com/repos/{repositorio}"
 
-    respuesta = requests.get(
-        url,
-        headers=obtener_headers(),
-        timeout=30
-    )
-
-    if respuesta.status_code != 200:
-
-        raise Exception(
-            "No fue posible conectar con el repositorio: "
-            f"{respuesta.status_code} - "
-            f"{respuesta.text}"
+        respuesta = requests.get(
+            url,
+            headers=obtener_headers(),
+            timeout=20
         )
 
-    return respuesta.json()
+        if respuesta.status_code == 200:
+            return True, "Conexión con GitHub exitosa."
 
+        return False, (
+            f"No se pudo conectar con GitHub. "
+            f"Código: {respuesta.status_code}. "
+            f"Detalle: {respuesta.text}"
+        )
+
+    except Exception as error:
+        return False, str(error)
+
+
+# =========================================================
+# RUTAS DE ARCHIVOS DE PUNTA TEATINOS
+# =========================================================
+
+RUTA_MRP = "data/MRP/Planificacion_MRP.xlsm"
+
+RUTA_CONSUMO = (
+    "data/CONSUMO/consumo_punta_teatinos.xlsx"
+)
+
+RUTA_PRECIOS = (
+    "data/PRECIOS/precios_punta_teatinos.xlsx"
+)
