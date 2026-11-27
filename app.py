@@ -4,7 +4,7 @@ from modules.navegacion import configurar_navegacion
 
 
 # =========================================================
-# CONFIGURACIÓN GENERAL
+# 1. CONFIGURACIÓN GENERAL
 # =========================================================
 
 st.set_page_config(
@@ -16,7 +16,7 @@ st.set_page_config(
 
 
 # =========================================================
-# PALETA DE COLORES
+# 2. PALETA DE COLORES
 # =========================================================
 
 COLOR_AZUL = "#102F4A"
@@ -26,121 +26,119 @@ COLOR_BLANCO = "#FFFFFF"
 
 
 # =========================================================
-# ESTILOS GENERALES
+# 3. ESTILOS GENERALES
 # =========================================================
 
-st.markdown(f"""
-<style>
+st.markdown(
+    f"""
+    <style>
 
-/* =====================================================
-   FONDO PRINCIPAL
-===================================================== */
+    /* =========================================
+       FONDO PRINCIPAL
+    ========================================= */
 
-.stApp {{
-    background-color: {COLOR_FONDO};
-}}
+    .stApp {{
+        background-color: {COLOR_FONDO};
+    }}
 
-.main .block-container {{
-    padding-top: 2rem;
-    padding-bottom: 2rem;
-    max-width: 1450px;
-}}
-
-
-/* =====================================================
-   MENÚ LATERAL
-===================================================== */
-
-[data-testid="stSidebar"] {{
-    background-color: {COLOR_AZUL} !important;
-}}
-
-/* Fondo de todo el contenido del menú */
-[data-testid="stSidebar"] > div:first-child {{
-    background-color: {COLOR_AZUL} !important;
-}}
-
-/* Títulos y textos del menú */
-[data-testid="stSidebar"] p,
-[data-testid="stSidebar"] span,
-[data-testid="stSidebar"] label {{
-    color: {COLOR_BLANCO} !important;
-}}
-
-/* Encabezados de las secciones */
-[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] {{
-    color: {COLOR_BLANCO} !important;
-}}
-
-/* Enlaces de navegación */
-[data-testid="stSidebar"] a {{
-    color: {COLOR_BLANCO} !important;
-    border-radius: 8px !important;
-    transition: background-color 0.2s ease;
-}}
-
-/* Texto de los enlaces */
-[data-testid="stSidebar"] a p {{
-    color: {COLOR_BLANCO} !important;
-}}
-
-/* Opción seleccionada */
-[data-testid="stSidebar"] [aria-current="page"] {{
-    background-color: {COLOR_AZUL_ACTIVO} !important;
-    border-radius: 8px !important;
-}}
-
-/* Texto de la opción seleccionada */
-[data-testid="stSidebar"] [aria-current="page"] p {{
-    color: {COLOR_BLANCO} !important;
-    font-weight: 700 !important;
-}}
-
-/* Efecto al pasar el cursor */
-[data-testid="stSidebar"] a:hover {{
-    background-color: {COLOR_AZUL_ACTIVO} !important;
-}}
-
-/* Iconos */
-[data-testid="stSidebar"] svg {{
-    color: {COLOR_BLANCO} !important;
-}}
-
-/* Botones del menú lateral */
-[data-testid="stSidebar"] button {{
-    color: {COLOR_BLANCO} !important;
-}}
-
-/* Separadores */
-[data-testid="stSidebar"] hr {{
-    border-color: #496176 !important;
-}}
+    .main .block-container {{
+        max-width: 1500px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+    }}
 
 
-/* =====================================================
-   BOTONES GENERALES
-===================================================== */
+    /* =========================================
+       MENÚ LATERAL
+    ========================================= */
 
-.stButton > button {{
-    border-radius: 8px;
-    font-weight: 600;
-}}
+    [data-testid="stSidebar"] {{
+        background-color: {COLOR_AZUL} !important;
+    }}
+
+    [data-testid="stSidebar"] > div:first-child {{
+        background-color: {COLOR_AZUL} !important;
+    }}
+
+    /* Textos del menú */
+
+    [data-testid="stSidebar"] p,
+    [data-testid="stSidebar"] span,
+    [data-testid="stSidebar"] label {{
+        color: {COLOR_BLANCO} !important;
+    }}
+
+    /* Enlaces */
+
+    [data-testid="stSidebar"] a {{
+        color: {COLOR_BLANCO} !important;
+        border-radius: 8px !important;
+    }}
+
+    [data-testid="stSidebar"] a p {{
+        color: {COLOR_BLANCO} !important;
+    }}
+
+    /* Página seleccionada */
+
+    [data-testid="stSidebar"] [aria-current="page"] {{
+        background-color: {COLOR_AZUL_ACTIVO} !important;
+        border-radius: 8px !important;
+    }}
+
+    [data-testid="stSidebar"] [aria-current="page"] p {{
+        color: {COLOR_BLANCO} !important;
+        font-weight: 700 !important;
+    }}
+
+    /* Efecto hover */
+
+    [data-testid="stSidebar"] a:hover {{
+        background-color: {COLOR_AZUL_ACTIVO} !important;
+    }}
+
+    /* Iconos */
+
+    [data-testid="stSidebar"] svg {{
+        color: {COLOR_BLANCO} !important;
+    }}
+
+    /* Botones del menú */
+
+    [data-testid="stSidebar"] button {{
+        color: {COLOR_BLANCO} !important;
+    }}
+
+    /* Separadores */
+
+    [data-testid="stSidebar"] hr {{
+        border-color: #496176 !important;
+    }}
 
 
-/* =====================================================
-   PIE DE PÁGINA
-===================================================== */
+    /* =========================================
+       ELEMENTOS GENERALES
+    ========================================= */
 
-footer {{
-    visibility: hidden;
-}}
+    .stButton > button {{
+        border-radius: 8px;
+        font-weight: 600;
+    }}
 
-</style>
-""", unsafe_allow_html=True)
+    /* Ocultar pie de página de Streamlit */
+
+    footer {{
+        visibility: hidden;
+    }}
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
 
 
 # =========================================================
-# NAVEGACIÓN DEL DASHBOARD
+# 4. NAVEGACIÓN
 # =========================================================
 
 configurar_navegacion()
