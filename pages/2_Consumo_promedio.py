@@ -995,83 +995,144 @@ st.caption(
 st.divider()
 
 
+
 # =====================================================
-# 17. PROYECCIÓN DE CONSUMO
+# 17. PROYECCIÓN DE CONSUMO MEDIANTE PROMEDIO MÓVIL
 # =====================================================
 
 st.subheader("Proyección de consumo")
 
 st.markdown(
-    "La proyección se calcula utilizando el promedio de los "
-    "últimos tres meses con registros reales de consumo."
+    "La proyección utiliza un promedio móvil de tres meses. "
+    "Para cada nuevo mes se consideran los tres meses anteriores, "
+    "incorporando los valores proyectados cuando corresponda."
 )
 
 if len(consumo_mensual) >= 1:
 
-    # Últimos tres meses disponibles con registros
+    # -------------------------------------------------
+    # 1. PREPARAR HISTORIAL DE CONSUMO REAL
+    # -------------------------------------------------
 
-    ultimos_tres = (
-        consumo_mensual
-        .tail(3)
-        .copy()
+    historial = consumo_mensual[
+        ["Mes", "Consumo"]
+    ].copy()
+
+    historial = historial.sort_values("Mes")
+
+    historial["Mes"] = pd.PeriodIndex(
+        historial["Mes"],
+        freq="M"
     )
 
-    promedio_proyeccion = (
-        ultimos_tres["Consumo"].mean()
+    historial = historial.drop_duplicates(
+        subset=["Mes"],
+        keep="last"
     )
 
-    ultimo_mes = consumo_mensual["Mes"].max()
+    # Crear una serie mensual continua.
+    # Los meses sin movimientos se consideran consumo cero.
 
-    # Punto de unión entre consumo real y proyección
+    primer_mes = historial["Mes"].min()
+    ultimo_mes = historial["Mes"].max()
 
-    fecha_inicio = ultimo_mes.to_timestamp()
+    todos_los_meses = pd.period_range(
+        start=primer_mes,
+        end=ultimo_mes,
+        freq="M"
+    )
 
-    proyeccion = pd.DataFrame({
-        "Fecha": [fecha_inicio],
-        "Consumo": [
-            consumo_mensual.iloc[-1]["Consumo"]
-        ],
-        "Tipo": ["Proyección"]
-    })
+    consumo_real = (
+        historial
+        .set_index("Mes")["Consumo"]
+        .reindex(todos_los_meses, fill_value=0)
+        .astype(float)
+    )
 
-    # Proyectar los siguientes tres meses
+    # -------------------------------------------------
+    # 2. CALCULAR PROMEDIO MÓVIL DE TRES MESES
+    # -------------------------------------------------
 
-    fechas_futuras = [
-        (ultimo_mes + i).to_timestamp()
-        for i in range(1, 4)
+    # Se proyectarán los siguientes tres meses.
+    # Cada proyección utiliza los tres valores anteriores.
+    # Los valores proyectados se incorporan al cálculo
+    # del siguiente mes.
+
+    MESES_PROYECCION = 3
+
+    valores_historicos = consumo_real.tolist()
+
+    resultados_proyeccion = []
+
+    for i in range(MESES_PROYECCION):
+
+        # Obtener los últimos tres valores disponibles
+        ultimos_tres_meses = valores_historicos[-3:]
+
+        # Calcular promedio móvil
+        promedio_movil = sum(
+            ultimos_tres_meses
+        ) / len(ultimos_tres_meses)
+
+        # Identificar el mes proyectado
+        mes_proyectado = (
+            ultimo_mes + i + 1
+        )
+
+        # Guardar resultado
+        resultados_proyeccion.append({
+            "Mes": mes_proyectado,
+            "Fecha": mes_proyectado.to_timestamp(),
+            "Consumo": promedio_movil,
+            "Tipo": "Proyección"
+        })
+
+        # Incorporar la proyección al historial
+        # para calcular el promedio del siguiente mes
+        valores_historicos.append(
+            promedio_movil
+        )
+
+    proyeccion = pd.DataFrame(
+        resultados_proyeccion
+    )
+
+    # -------------------------------------------------
+    # 3. PREPARAR DATOS REALES
+    # -------------------------------------------------
+
+    reales = consumo_real.reset_index()
+
+    reales.columns = [
+        "Mes",
+        "Consumo"
     ]
 
-    datos_futuros = pd.DataFrame({
-        "Fecha": fechas_futuras,
-        "Consumo": [promedio_proyeccion] * 3,
-        "Tipo": ["Proyección"] * 3
-    })
-
-    proyeccion = pd.concat(
-        [
-            proyeccion,
-            datos_futuros
-        ],
-        ignore_index=True
+    reales["Fecha"] = (
+        reales["Mes"].dt.to_timestamp()
     )
-
-    # Datos reales
-
-    reales = consumo_mensual[
-        ["Fecha", "Consumo"]
-    ].copy()
 
     reales["Tipo"] = "Consumo real"
 
-    # Unir las series
+    # -------------------------------------------------
+    # 4. UNIR CONSUMO REAL Y PROYECCIÓN
+    # -------------------------------------------------
 
     datos_grafico = pd.concat(
         [
-            reales,
-            proyeccion
+            reales[
+                ["Fecha", "Consumo", "Tipo"]
+            ],
+            proyeccion[
+                ["Fecha", "Consumo", "Tipo"]
+            ]
         ],
         ignore_index=True
     )
+
+    # -------------------------------------------------
+    # 5. GRÁFICO
+    # -------------------------------------------------
 
     fig_proyeccion = px.line(
         datos_grafico,
@@ -1127,15 +1188,53 @@ if len(consumo_mensual) >= 1:
         use_container_width=True
     )
 
-    st.info(
-        f"Consumo promedio utilizado para la proyección: "
-        f"{promedio_proyeccion:,.2f} {unidad_seleccionada}."
+    # -------------------------------------------------
+    # 6. TABLA DE CÁLCULO DE LA PROYECCIÓN
+    # -------------------------------------------------
+
+    st.markdown("#### Detalle del promedio móvil")
+
+    detalle_proyeccion = []
+
+    valores_historicos = consumo_real.tolist()
+
+    for i in range(MESES_PROYECCION):
+
+        ultimos_tres_meses = valores_historicos[-3:]
+
+        promedio_movil = sum(
+            ultimos_tres_meses
+        ) / len(ultimos_tres_meses)
+
+        mes_proyectado = ultimo_mes + i + 1
+
+        detalle_proyeccion.append({
+            "Mes proyectado": str(mes_proyectado),
+            "Mes anterior 1": round(ultimos_tres_meses[-1], 2),
+            "Mes anterior 2": round(ultimos_tres_meses[-2], 2),
+            "Mes anterior 3": round(ultimos_tres_meses[-3], 2),
+            "Promedio móvil": round(promedio_movil, 2)
+        })
+
+        valores_historicos.append(
+            promedio_movil
+        )
+
+    tabla_proyeccion = pd.DataFrame(
+        detalle_proyeccion
+    )
+
+    st.dataframe(
+        tabla_proyeccion,
+        use_container_width=True,
+        hide_index=True
     )
 
     st.caption(
-        "La proyección es una estimación constante basada en "
-        "los últimos tres meses disponibles con registros. "
-        "No representa una predicción estadística avanzada."
+        "La proyección se actualiza de forma recursiva: "
+        "cada mes utiliza los tres meses inmediatamente anteriores. "
+        "Los meses proyectados se incorporan al cálculo de los "
+        "meses siguientes. Los meses sin movimientos se consideran cero."
     )
 
 else:
