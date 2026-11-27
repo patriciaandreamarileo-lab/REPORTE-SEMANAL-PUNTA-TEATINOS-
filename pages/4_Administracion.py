@@ -105,24 +105,21 @@ div[data-testid="stMetric"] {
 """, unsafe_allow_html=True)
 
 
+
 # =========================================================
 # 3. ENCABEZADO
 # =========================================================
 
-st.markdown("""
-<div class="admin-header">
-
-    <div class="admin-title">
-        ADMINISTRACIÓN
-    </div>
-
-    <div class="admin-subtitle">
-        ENAEX CHILE | Gestión y actualización de archivos
-        | Punta Teatinos
-    </div>
-
-</div>
-""", unsafe_allow_html=True)
+st.markdown(
+    '<div class="admin-header">'
+    '<div class="admin-title">ADMINISTRACIÓN</div>'
+    '<div class="admin-subtitle">'
+    'ENAEX CHILE | Gestión y actualización de archivos '
+    '| Punta Teatinos'
+    '</div>'
+    '</div>',
+    unsafe_allow_html=True
+)
 
 
 # =========================================================
