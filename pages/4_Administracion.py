@@ -51,7 +51,7 @@ div[data-testid="stMetric"] {
 # 3. ENCABEZADO
 # =====================================================
 
-st.markdown("""
+st.html("""
 <div style="
     background: linear-gradient(110deg, #102F4A, #2871A5);
     padding: 30px 35px;
@@ -85,9 +85,7 @@ st.markdown("""
     </p>
 
 </div>
-""", unsafe_allow_html=True)
-
-
+""")
 # =====================================================
 # 4. AUTENTICACIÓN
 # =====================================================
