@@ -1,25 +1,8 @@
 import streamlit as st
-import streamlit.components.v1 as components
-
-from modules.mrp_reader import cargar_mrp
 
 
 # =========================================================
-# CONFIGURACIÓN DE LA PÁGINA
-# =========================================================
-
-st.set_page_config(
-    page_title="Inicio | Punta Teatinos",
-    page_icon="🏭",
-    layout="wide"
-)
-
-COLOR_PLANTA = "#98643A"
-FONDO = "#F4F7FB"
-
-
-# =========================================================
-# ESTILOS
+# CONFIGURACIÓN VISUAL
 # =========================================================
 
 st.markdown("""
@@ -29,115 +12,93 @@ st.markdown("""
     }
 
     .main .block-container {
-        padding-top: 1.5rem;
-        padding-bottom: 2rem;
         max-width: 1450px;
+        padding-top: 2rem;
+        padding-bottom: 2rem;
     }
 
-    .header-title {
-        color: #17365D;
-        font-size: 30px;
+    /* ENCABEZADO PRINCIPAL */
+    .hero {
+        background: linear-gradient(110deg, #153957 0%, #286B9E 100%);
+        padding: 35px 38px;
+        border-radius: 17px;
+        margin-bottom: 48px;
+        color: white;
+    }
+
+    .hero-title {
+        font-size: 32px;
         font-weight: 800;
-        margin-bottom: 5px;
-    }
-
-    .header-subtitle {
-        color: #60758D;
-        font-size: 18px;
-        margin-bottom: 42px;
-    }
-
-    .plant-card {
-        background-color: #FFFFFF;
-        border: 1px solid #DCE4EF;
-        border-left: 6px solid #98643A;
-        border-radius: 15px;
-        padding: 28px 30px;
-        margin-bottom: 22px;
-    }
-
-    .plant-name {
-        color: #98643A;
-        font-size: 27px;
-        font-weight: 800;
+        color: white;
         margin-bottom: 8px;
     }
 
-    .plant-info {
-        color: #60758D;
+    .hero-subtitle {
         font-size: 16px;
+        color: #F0F5FA;
     }
 
-    .section-title {
-        color: #24364B;
-        font-size: 25px;
-        font-weight: 750;
-        margin-top: 15px;
-        margin-bottom: 18px;
-    }
-
-    .info-card {
-        background-color: #FFFFFF;
-        border: 1px solid #DCE4EF;
-        border-radius: 14px;
-        padding: 23px 25px;
-        min-height: 150px;
-    }
-
-    .info-title {
-        color: #98643A;
-        font-size: 13px;
+    /* TÍTULO DEL PANEL */
+    .panel-title {
+        font-size: 36px;
         font-weight: 800;
-        letter-spacing: 1px;
-        margin-bottom: 13px;
-    }
-
-    .info-value {
-        color: #26384D;
-        font-size: 21px;
-        font-weight: 700;
-    }
-
-    .description-card {
-        background-color: #FFFFFF;
-        border: 1px solid #DCE4EF;
-        border-radius: 14px;
-        padding: 25px 28px;
-        margin-top: 28px;
-        color: #52657A;
-        font-size: 15px;
-        line-height: 1.7;
-    }
-
-    .description-title {
-        color: #24364B;
-        font-size: 21px;
-        font-weight: 750;
+        color: #173B5E;
         margin-bottom: 12px;
     }
 
+    .panel-description {
+        font-size: 18px;
+        color: #687E96;
+        margin-bottom: 35px;
+    }
+
+    /* TARJETAS */
+    div[data-testid="stVerticalBlockBorderWrapper"] {
+        background-color: #FFFFFF;
+        border: 1px solid #D9E0E8;
+        border-radius: 12px;
+        min-height: 300px;
+    }
+
+    .card-icon {
+        font-size: 42px;
+        margin-bottom: 22px;
+    }
+
+    .card-title {
+        color: #173B5E;
+        font-size: 23px;
+        font-weight: 800;
+        margin-bottom: 20px;
+    }
+
+    .card-description {
+        color: #687E96;
+        font-size: 15px;
+        line-height: 1.8;
+        min-height: 78px;
+    }
+
+    /* ENLACES */
+    div[data-testid="stPageLink"] a {
+        color: #173B5E !important;
+        font-size: 15px;
+        font-weight: 500;
+        text-decoration: none !important;
+    }
+
+    div[data-testid="stPageLink"] a:hover {
+        color: #98643A !important;
+    }
+
+    /* PIE DE PÁGINA */
     .footer {
-        color: #8795A6;
-        font-size: 12px;
         text-align: center;
-        margin-top: 45px;
+        color: #8A98A8;
+        font-size: 12px;
+        margin-top: 55px;
         padding-top: 18px;
         border-top: 1px solid #DCE4EF;
-    }
-
-    div.stButton > button {
-        background-color: #98643A;
-        color: white;
-        border: none;
-        border-radius: 8px;
-        padding: 9px 20px;
-        font-weight: 600;
-    }
-
-    div.stButton > button:hover {
-        background-color: #80512F;
-        color: white;
-        border: none;
     }
 </style>
 """, unsafe_allow_html=True)
@@ -147,126 +108,117 @@ st.markdown("""
 # ENCABEZADO
 # =========================================================
 
-st.markdown(
-    '<div class="header-title">REPORTE SEMANAL</div>',
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    '<div class="header-subtitle">'
-    'ENAEX CHILE | GESTIÓN DE MATERIAS PRIMAS'
-    '</div>',
-    unsafe_allow_html=True
-)
-
-
-# =========================================================
-# PRESENTACIÓN DE LA PLANTA
-# =========================================================
-
 st.markdown("""
-<div class="plant-card">
-    <div class="plant-name">PUNTA TEATINOS</div>
-    <div class="plant-info">
-        Planta ubicada en La Serena, Región de Coquimbo.
+<div class="hero">
+    <div class="hero-title">
+        DASHBOARD DE GESTIÓN DE MATERIAS PRIMAS
+    </div>
+    <div class="hero-subtitle">
+        ENAEX CHILE | Planificación, consumo y análisis de precios
     </div>
 </div>
 """, unsafe_allow_html=True)
 
 
 # =========================================================
-# INFORMACIÓN DE LA PLANTA
+# PANEL DE CONTROL
 # =========================================================
 
-st.markdown(
-    '<div class="section-title">Información de la planta</div>',
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div class="panel-title">
+    Panel de control
+</div>
 
-col1, col2, col3 = st.columns(3)
+<div class="panel-description">
+    Selecciona el módulo que deseas consultar para acceder a los
+    análisis de materias primas.
+</div>
+""", unsafe_allow_html=True)
+
+
+# =========================================================
+# TARJETAS DE NAVEGACIÓN
+# =========================================================
+
+col1, col2, col3 = st.columns(3, gap="large")
+
+
+# ---------------------------------------------------------
+# TARJETA 1: ANÁLISIS POR PLANTA
+# ---------------------------------------------------------
 
 with col1:
-    st.markdown("""
-    <div class="info-card">
-        <div class="info-title">CENTRO SAP</div>
-        <div class="info-value">E026</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown("""
+        <div class="card-icon">🏭</div>
+
+        <div class="card-title">
+            Análisis por planta
+        </div>
+
+        <div class="card-description">
+            Consulta los indicadores de inventario, cobertura,
+            nivel de servicio y situación de las materias primas
+            de la planta Punta Teatinos.
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.page_link(
+            "pages/1_Analisis_por_planta.py",
+            label="➡️ Ingresar al análisis"
+        )
+
+
+# ---------------------------------------------------------
+# TARJETA 2: CONSUMO PROMEDIO
+# ---------------------------------------------------------
 
 with col2:
-    st.markdown("""
-    <div class="info-card">
-        <div class="info-title">UBICACIÓN</div>
-        <div class="info-value">La Serena</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown("""
+        <div class="card-icon">📊</div>
+
+        <div class="card-title">
+            Consumo promedio
+        </div>
+
+        <div class="card-description">
+            Analiza el comportamiento histórico del consumo,
+            sus variaciones mensuales y las tendencias de
+            las materias primas.
+        </div>
+        """, unsafe_allow_html=True)
+
+        st.page_link(
+            "pages/2_Consumo_promedio.py",
+            label="➡️ Ingresar al consumo"
+        )
+
+
+# ---------------------------------------------------------
+# TARJETA 3: EVOLUCIÓN DE PRECIOS
+# ---------------------------------------------------------
 
 with col3:
-    st.markdown("""
-    <div class="info-card">
-        <div class="info-title">ÁREA RESPONSABLE</div>
-        <div class="info-value">Materias Primas</div>
-    </div>
-    """, unsafe_allow_html=True)
+    with st.container(border=True):
+        st.markdown("""
+        <div class="card-icon">📈</div>
 
+        <div class="card-title">
+            Evolución de precios
+        </div>
 
-# =========================================================
-# DESCRIPCIÓN DEL DASHBOARD
-# =========================================================
+        <div class="card-description">
+            Visualiza la evolución de los precios de compra,
+            las variaciones de las órdenes de compra y el
+            comportamiento de los proveedores.
+        </div>
+        """, unsafe_allow_html=True)
 
-st.markdown("""
-<div class="description-card">
-    <div class="description-title">
-        Acerca del reporte
-    </div>
-    Este dashboard permite consultar y analizar información
-    relacionada con la gestión de materias primas de la planta
-    Punta Teatinos. Su objetivo es facilitar el seguimiento de
-    los niveles de inventario, el consumo de materiales y la
-    evolución de precios, entregando información para apoyar
-    la planificación y la toma de decisiones.
-</div>
-""", unsafe_allow_html=True)
-
-
-# =========================================================
-# VERIFICACIÓN DE CONEXIÓN CON MRP
-# =========================================================
-
-st.markdown(
-    '<div class="section-title">Estado de conexión</div>',
-    unsafe_allow_html=True
-)
-
-if st.button("Verificar conexión con MRP"):
-    try:
-        with st.spinner("Conectando con el archivo MRP..."):
-            datos, hojas = cargar_mrp()
-
-        if datos is not None and not datos.empty:
-            st.success("Conexión con el archivo MRP realizada correctamente.")
-
-            col_a, col_b = st.columns(2)
-
-            with col_a:
-                st.metric("Registros encontrados", len(datos))
-
-            with col_b:
-                st.metric("Hojas disponibles", len(hojas))
-
-            with st.expander("Ver hojas disponibles"):
-                for hoja in hojas:
-                    st.write(f"• {hoja}")
-
-        else:
-            st.warning(
-                "La conexión se realizó, pero no se encontraron "
-                "registros en la hoja principal del MRP."
-            )
-
-    except Exception as e:
-        st.error("No fue posible conectar con el archivo MRP.")
-        st.caption(f"Detalle del error: {e}")
+        st.page_link(
+            "pages/3_Evolucion_de_precios.py",
+            label="➡️ Ingresar a precios"
+        )
 
 
 # =========================================================
