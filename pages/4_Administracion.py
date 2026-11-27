@@ -14,14 +14,10 @@ from modules.github_storage import (
 # =====================================================
 
 RUTA_MRP = "data/MRP/Planificacion_MRP.xlsm"
+RUTA_CONSUMO = "data/CONSUMO/consumo_punta_teatinos.xlsx"
+RUTA_PRECIOS = "data/PRECIOS/precios_punta_teatinos.xlsx"
 
-RUTA_CONSUMO = (
-    "data/CONSUMO/consumo_punta_teatinos.xlsx"
-)
-
-RUTA_PRECIOS = (
-    "data/PRECIOS/precios_punta_teatinos.xlsx"
-)
+CENTRO_PUNTA_TEATINOS = "E026"
 
 
 # =====================================================
@@ -42,16 +38,9 @@ div[data-testid="stMetric"] {
     border: 1px solid #E2E8F0;
 }
 
-.admin-header {
-    background: linear-gradient(110deg, #102F4A, #286B9E);
-    padding: 28px;
-    border-radius: 14px;
-    color: white;
-    margin-bottom: 20px;
-}
-
-.admin-header h2 {
-    color: white;
+.stButton > button {
+    border-radius: 8px;
+    font-weight: 600;
 }
 
 </style>
@@ -63,28 +52,40 @@ div[data-testid="stMetric"] {
 # =====================================================
 
 st.markdown("""
-<div class="admin-header">
-    <div style="
-        font-size:13px;
-        font-weight:bold;
-        letter-spacing:2px;
-        color:#DCEAF7;
+<div style="
+    background: linear-gradient(110deg, #102F4A, #2871A5);
+    padding: 30px 35px;
+    border-radius: 16px;
+    margin-bottom: 25px;
+">
+
+    <p style="
+        color: white;
+        font-weight: bold;
+        letter-spacing: 2px;
+        margin-bottom: 5px;
     ">
         ENAEX CHILE
-    </div>
+    </p>
 
-    <h2 style="margin-top:10px;">
+    <h2 style="
+        color: white;
+        margin-top: 10px;
+        margin-bottom: 10px;
+    ">
         ADMINISTRACIÓN
     </h2>
 
-    <p style="color:#DCEAF7;margin-bottom:0;">
+    <p style="
+        color: #DCEAF7;
+        margin-bottom: 0;
+    ">
         Gestión y actualización de los archivos utilizados
         en el dashboard de materias primas de Punta Teatinos.
     </p>
+
 </div>
 """, unsafe_allow_html=True)
-
-st.divider()
 
 
 # =====================================================
@@ -95,24 +96,6 @@ st.subheader("Acceso de administrador")
 
 if "admin_autorizado" not in st.session_state:
     st.session_state.admin_autorizado = False
-
-
-def validar_clave(clave):
-
-    try:
-
-        clave_correcta = st.secrets["CLAVE_SUBIDA"]
-
-        return clave == clave_correcta
-
-    except Exception:
-
-        st.error(
-            "No se encontró CLAVE_SUBIDA en Streamlit Secrets. "
-            "Revisa la configuración de la aplicación."
-        )
-
-        return False
 
 
 if not st.session_state.admin_autorizado:
@@ -128,7 +111,20 @@ if not st.session_state.admin_autorizado:
         use_container_width=True
     ):
 
-        if validar_clave(clave):
+        try:
+
+            clave_correcta = st.secrets["CLAVE_SUBIDA"]
+
+        except Exception:
+
+            st.error(
+                "No se encontró CLAVE_SUBIDA en los secretos "
+                "de Streamlit. Revisa la configuración."
+            )
+
+            st.stop()
+
+        if clave == clave_correcta:
 
             st.session_state.admin_autorizado = True
             st.rerun()
@@ -202,12 +198,6 @@ def validar_mrp(archivo):
             "El archivo MRP no contiene la hoja NS."
         )
 
-    if "MRP" not in excel.sheet_names:
-
-        raise ValueError(
-            "El archivo MRP no contiene la hoja MRP."
-        )
-
     datos = pd.read_excel(
         BytesIO(contenido),
         sheet_name="NS",
@@ -219,14 +209,18 @@ def validar_mrp(archivo):
 
     for _, fila in datos.iterrows():
 
-        valores = [
-            str(valor).strip().upper()
-            for valor in fila.fillna("").tolist()
-        ]
+        valores = (
+            fila.fillna("")
+            .astype(str)
+            .str.strip()
+            .str.upper()
+            .tolist()
+        )
 
         if (
             "CENTRO" in valores
             and "MATERIAL" in valores
+            and "DESCRIPCIÓN DEL MATERIAL" in valores
         ):
 
             encabezados_encontrados = True
@@ -235,8 +229,8 @@ def validar_mrp(archivo):
     if not encabezados_encontrados:
 
         raise ValueError(
-            "No se encontraron los encabezados Centro "
-            "y Material en la hoja NS."
+            "No se encontraron los encabezados esperados "
+            "en la hoja NS."
         )
 
     return True
@@ -361,26 +355,23 @@ def procesar_carga(
 
             return
 
-        # Validar estructura del Excel
+        # Validar estructura del Excel.
+
         funcion_validacion(archivo)
 
-        # Obtener contenido binario
+        # Obtener contenido del archivo.
+
         contenido = archivo.getvalue()
 
-        if not isinstance(contenido, bytes):
+        # Subir archivo a GitHub.
 
-            raise TypeError(
-                "El contenido del archivo no está en formato binario."
-            )
-
-        # Guardar archivo en GitHub
         resultado = subir_archivo_github(
             ruta,
             contenido,
-            mensaje=f"Actualización de {nombre} desde Punta Teatinos"
+            mensaje=f"Actualización de {nombre} - Punta Teatinos"
         )
 
-        if resultado is not True:
+        if resultado is False:
 
             raise Exception(
                 "GitHub no confirmó la actualización del archivo."
@@ -389,6 +380,8 @@ def procesar_carga(
         st.success(
             f"{nombre} actualizado correctamente en GitHub."
         )
+
+        # Limpiar caché.
 
         st.cache_data.clear()
 
@@ -408,7 +401,8 @@ st.subheader("Actualización del MRP")
 st.markdown(
     "Carga la nueva versión del archivo MRP. "
     "Este archivo reemplazará la versión anterior "
-    "almacenada en GitHub."
+    "almacenada en GitHub y será utilizado para actualizar "
+    "la información de planificación."
 )
 
 archivo_mrp = st.file_uploader(
@@ -473,7 +467,7 @@ if archivo_consumo is not None:
             archivo_consumo,
             RUTA_CONSUMO,
             validar_consumo,
-            "El consumo mensual de Punta Teatinos"
+            "El consumo mensual"
         )
 
 
@@ -531,16 +525,14 @@ col1, col2, col3 = st.columns(3)
 
 
 # -----------------------------------------------------
-# ESTADO DEL MRP
+# Estado del MRP
 # -----------------------------------------------------
 
 with col1:
 
     try:
 
-        mrp_guardado = descargar_archivo_github(
-            RUTA_MRP
-        )
+        mrp_guardado = descargar_archivo_github(RUTA_MRP)
 
         if mrp_guardado:
 
@@ -554,24 +546,22 @@ with col1:
                 "MRP: archivo no encontrado"
             )
 
-    except Exception as error:
+    except Exception:
 
         st.warning(
-            f"MRP: no fue posible verificar el archivo. {error}"
+            "MRP: no fue posible verificar el archivo"
         )
 
 
 # -----------------------------------------------------
-# ESTADO DEL CONSUMO
+# Estado del consumo
 # -----------------------------------------------------
 
 with col2:
 
     try:
 
-        consumo_guardado = descargar_archivo_github(
-            RUTA_CONSUMO
-        )
+        consumo_guardado = descargar_archivo_github(RUTA_CONSUMO)
 
         if consumo_guardado:
 
@@ -585,24 +575,22 @@ with col2:
                 "Consumo: archivo no encontrado"
             )
 
-    except Exception as error:
+    except Exception:
 
         st.warning(
-            f"Consumo: no fue posible verificar el archivo. {error}"
+            "Consumo: no fue posible verificar el archivo"
         )
 
 
 # -----------------------------------------------------
-# ESTADO DE PRECIOS
+# Estado de precios
 # -----------------------------------------------------
 
 with col3:
 
     try:
 
-        precios_guardados = descargar_archivo_github(
-            RUTA_PRECIOS
-        )
+        precios_guardados = descargar_archivo_github(RUTA_PRECIOS)
 
         if precios_guardados:
 
@@ -616,10 +604,10 @@ with col3:
                 "Precios: archivo no encontrado"
             )
 
-    except Exception as error:
+    except Exception:
 
         st.warning(
-            f"Precios: no fue posible verificar el archivo. {error}"
+            "Precios: no fue posible verificar el archivo"
         )
 
 
@@ -640,9 +628,9 @@ st.markdown(
         padding:15px;
     ">
         ENAEX CHILE | ADMINISTRACIÓN DEL DASHBOARD
-        | PUNTA TEATINOS | CENTRO E026
+        <br>
+        PUNTA TEATINOS | CENTRO E026
     </div>
     """,
     unsafe_allow_html=True
 )
-
