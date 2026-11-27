@@ -1,5 +1,6 @@
-import streamlit as st
+
 import pandas as pd
+import streamlit as st
 import plotly.express as px
 
 from modules.mrp_reader import cargar_mrp
@@ -8,13 +9,6 @@ from modules.mrp_reader import cargar_mrp
 # =====================================================
 # 1. CONFIGURACIÓN GENERAL
 # =====================================================
-
-st.set_page_config(
-    page_title="Análisis por planta | PUNTA TEATINOS",
-    page_icon="🏭",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
 
 CENTRO_PUNTA_TEATINOS = "E026"
 
@@ -89,7 +83,6 @@ def mostrar_tabla(df, columnas):
     ]
 
     if df.empty:
-
         st.info("No hay registros disponibles para mostrar.")
         return
 
@@ -189,24 +182,18 @@ datos_mrp["Centro"] = (
     .astype(str)
     .str.strip()
     .str.upper()
-    .str.replace(r"\.0$", "", regex=True)
 )
 
-datos_punta = datos_mrp[
+datos_punta_teatinos = datos_mrp[
     datos_mrp["Centro"] == CENTRO_PUNTA_TEATINOS
 ].copy()
 
 
-if datos_punta.empty:
+if datos_punta_teatinos.empty:
 
     st.warning(
         "No se encontraron materias primas del centro E026 "
         "en el archivo MRP."
-    )
-
-    st.write(
-        "Centros encontrados:",
-        sorted(datos_mrp["Centro"].unique().tolist())
     )
 
     st.stop()
@@ -216,13 +203,13 @@ if datos_punta.empty:
 # 7. FILTRAR MATERIAS PRIMAS ACTIVAS
 # =====================================================
 
-datos_punta["MMPP Activa"] = (
-    normalizar_texto(datos_punta["MMPP Activa"])
+datos_punta_teatinos["MMPP Activa"] = (
+    normalizar_texto(datos_punta_teatinos["MMPP Activa"])
 )
 
-datos_activos = datos_punta[
-    datos_punta["MMPP Activa"].isin(
-        ["SI", "SÍ", "YES", "1"]
+datos_activos = datos_punta_teatinos[
+    datos_punta_teatinos["MMPP Activa"].isin(
+        ["SI", "SÍ", "YES", "1", "TRUE", "X"]
     )
 ].copy()
 
@@ -237,7 +224,7 @@ if datos_activos.empty:
 
     st.write(
         "Valores encontrados:",
-        datos_punta["MMPP Activa"].value_counts()
+        datos_punta_teatinos["MMPP Activa"].value_counts()
     )
 
     st.stop()
@@ -285,6 +272,7 @@ st.html("""
     margin-bottom: 20px;
     color: white;
 ">
+
     <div style="
         font-size: 13px;
         font-weight: bold;
@@ -309,6 +297,7 @@ st.html("""
     ">
         La Serena | Enaex Chile | Centro E026
     </p>
+
 </div>
 """)
 
