@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 
@@ -293,9 +292,11 @@ if faltantes:
 
 datos_mrp["Centro"] = (
     datos_mrp["Centro"]
+    .fillna("")
     .astype(str)
     .str.strip()
     .str.upper()
+    .str.replace(r"\.0$", "", regex=True)
 )
 
 
@@ -303,6 +304,7 @@ datos_mrp["Centro"] = (
 
 datos_mrp["Material"] = (
     datos_mrp["Material"]
+    .fillna("")
     .astype(str)
     .str.replace(r"\.0$", "", regex=True)
     .str.strip()
@@ -312,8 +314,8 @@ datos_mrp["Material"] = (
 # Eliminar registros sin material o centro
 
 datos_mrp = datos_mrp[
-    datos_mrp["Material"].notna()
-    & datos_mrp["Centro"].notna()
+    (datos_mrp["Material"] != "")
+    & (datos_mrp["Centro"] != "")
 ].copy()
 
 
@@ -385,24 +387,105 @@ if datos.empty:
         f"(Centro {CENTRO}) en el archivo MRP."
     )
 
-    st.stop()
+    st.subheader("Diagnóstico de centros")
 
-
-datos_activos = obtener_activos(datos)
-
-
-if datos_activos.empty:
-
-    st.warning(
-        "No se encontraron materias primas activas "
-        "para Punta Teatinos."
+    st.write(
+        "Centros encontrados:",
+        sorted(datos_mrp["Centro"].unique().tolist())
     )
 
     st.stop()
 
 
 # =========================================================
-# 6. ENCABEZADO DE LA PLANTA
+# 6. DIAGNÓSTICO DE MATERIAS PRIMAS ACTIVAS
+# =========================================================
+
+st.subheader("Diagnóstico de datos MRP")
+
+st.write(
+    "Total de registros recibidos:",
+    len(datos_mrp)
+)
+
+st.write(
+    "Registros encontrados para E026:",
+    len(datos)
+)
+
+st.write("Columnas disponibles:")
+
+st.write(datos.columns.tolist())
+
+
+if "MMPP Activa" in datos.columns:
+
+    st.write("Valores encontrados en MMPP Activa:")
+
+    st.dataframe(
+        datos["MMPP Activa"]
+        .value_counts(dropna=False)
+        .rename_axis("Valor")
+        .reset_index(name="Cantidad"),
+        use_container_width=True,
+        hide_index=True
+    )
+
+    st.write("Ejemplos de registros E026:")
+
+    columnas_diagnostico = [
+        columna
+        for columna in [
+            "Centro",
+            "Material",
+            "Descripción del material",
+            "MMPP Activa"
+        ]
+        if columna in datos.columns
+    ]
+
+    st.dataframe(
+        datos[columnas_diagnostico].head(15),
+        use_container_width=True,
+        hide_index=True
+    )
+
+else:
+
+    st.error(
+        "No existe la columna MMPP Activa "
+        "en los datos recibidos."
+    )
+
+    st.write("Columnas disponibles:")
+    st.write(datos.columns.tolist())
+
+    st.stop()
+
+
+# Aplicar filtro de materias primas activas
+
+datos_activos = obtener_activos(datos)
+
+
+st.write(
+    "Materias primas activas reconocidas:",
+    len(datos_activos)
+)
+
+
+if datos_activos.empty:
+
+    st.warning(
+        "El diagnóstico indica que no se reconocieron "
+        "materias primas activas."
+    )
+
+    st.stop()
+
+
+# =========================================================
+# 7. ENCABEZADO DE LA PLANTA
 # =========================================================
 
 st.markdown("""
@@ -425,7 +508,7 @@ st.markdown("""
 
 
 # =========================================================
-# 7. RESUMEN SUPERIOR
+# 8. RESUMEN SUPERIOR
 # =========================================================
 
 col_grafico, col_resumen = st.columns(
@@ -435,7 +518,7 @@ col_grafico, col_resumen = st.columns(
 
 
 # ---------------------------------------------------------
-# 7.1 DISTRIBUCIÓN DEL NIVEL DE SERVICIO
+# 8.1 DISTRIBUCIÓN DEL NIVEL DE SERVICIO
 # ---------------------------------------------------------
 
 with col_grafico:
@@ -530,17 +613,20 @@ with col_grafico:
             )
 
         else:
+
             st.info(
                 "No hay clasificaciones EB, SB o BB disponibles."
             )
 
     else:
+
         st.warning(
             "No se encontró la columna de clasificación NS."
         )
 
+
 # ---------------------------------------------------------
-# 7.2 RESUMEN DE INVENTARIO
+# 8.2 RESUMEN DE INVENTARIO
 # ---------------------------------------------------------
 
 with col_resumen:
@@ -595,7 +681,7 @@ st.divider()
 
 
 # =========================================================
-# 8. MATERIAS PRIMAS CON MENOR STOCK
+# 9. MATERIAS PRIMAS CON MENOR STOCK
 # =========================================================
 
 st.subheader("Materias primas con menor stock")
@@ -640,16 +726,6 @@ if "Stock Actual" in datos_activos.columns:
 
         tabla_mostrar = tabla_stock[columnas_stock].copy()
 
-        tabla_mostrar = tabla_mostrar.rename(
-            columns={
-                "UM": "UM",
-                "Stock Actual": "Stock Actual",
-                "Stock Seguridad": "Stock Seguridad",
-                "Stock Óptimo": "Stock Óptimo",
-                "Cobertura a [Días]": "Cobertura a [Días]"
-            }
-        )
-
         st.dataframe(
             tabla_mostrar,
             use_container_width=True,
@@ -673,7 +749,7 @@ st.divider()
 
 
 # =========================================================
-# 9. MATERIAS PRIMAS CON MENOR CONSUMO Y MAYOR COBERTURA
+# 10. MATERIAS PRIMAS CON MENOR CONSUMO Y MAYOR COBERTURA
 # =========================================================
 
 st.subheader(
@@ -749,7 +825,7 @@ st.divider()
 
 
 # =========================================================
-# 10. ALERTAS DE COBERTURA DE INVENTARIO
+# 11. ALERTAS DE COBERTURA DE INVENTARIO
 # =========================================================
 
 st.subheader("Alertas de cobertura de inventario")
@@ -863,7 +939,7 @@ st.divider()
 
 
 # =========================================================
-# 11. CONSULTA INDIVIDUAL DE MATERIAS PRIMAS
+# 12. CONSULTA INDIVIDUAL DE MATERIAS PRIMAS
 # =========================================================
 
 st.subheader(
@@ -890,6 +966,7 @@ catalogo["Etiqueta"] = (
 catalogo = catalogo.sort_values(
     by="Material"
 )
+
 
 if not catalogo.empty:
 
@@ -1015,13 +1092,12 @@ else:
 
 
 # =========================================================
-# 12. PIE DE PÁGINA
+# 13. PIE DE PÁGINA
 # =========================================================
 
 st.markdown("""
 <div class="footer">
-    ENAEX CHILE | DASHBOARD DE GESTIÓN DE MATERIAS PRIMAS
-    | PUNTA TEATINOS
+    REPORTE SEMANAL PUNTA TEATINOS
+    | ENAEX CHILE
 </div>
 """, unsafe_allow_html=True)
-
