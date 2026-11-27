@@ -1,7 +1,6 @@
 
 import streamlit as st
 import pandas as pd
-import plotly.express as px
 
 from modules.mrp_reader import cargar_mrp
 
@@ -441,9 +440,7 @@ col_grafico, col_resumen = st.columns(
 
 with col_grafico:
 
-    st.subheader(
-        "Distribución del nivel de servicio"
-    )
+    st.subheader("Distribución del nivel de servicio")
 
     columna_clasificacion = obtener_columna(
         datos_activos,
@@ -465,10 +462,7 @@ with col_grafico:
                 clasificaciones.isin(["EB", "SB", "BB"])
             ]
             .value_counts()
-            .reindex(
-                ["EB", "SB", "BB"],
-                fill_value=0
-            )
+            .reindex(["EB", "SB", "BB"], fill_value=0)
         )
 
         datos_grafico = pd.DataFrame({
@@ -482,68 +476,68 @@ with col_grafico:
 
         if datos_grafico["Cantidad"].sum() > 0:
 
-            fig = px.pie(
-                datos_grafico,
-                names="Clasificación",
-                values="Cantidad",
-                hole=0.42,
-                color="Clasificación",
-                color_discrete_map={
-                    "EB": "#16A34A",
-                    "SB": "#3B82F6",
-                    "BB": "#EF4444"
+            especificacion = {
+                "mark": {
+                    "type": "arc",
+                    "innerRadius": 65,
+                    "outerRadius": 125,
+                    "stroke": "white",
+                    "strokeWidth": 2
+                },
+                "encoding": {
+                    "theta": {
+                        "field": "Cantidad",
+                        "type": "quantitative"
+                    },
+                    "color": {
+                        "field": "Clasificación",
+                        "type": "nominal",
+                        "scale": {
+                            "domain": ["EB", "SB", "BB"],
+                            "range": [
+                                "#16A34A",
+                                "#3B82F6",
+                                "#EF4444"
+                            ]
+                        },
+                        "legend": {
+                            "title": None,
+                            "orient": "right"
+                        }
+                    },
+                    "tooltip": [
+                        {
+                            "field": "Clasificación",
+                            "type": "nominal"
+                        },
+                        {
+                            "field": "Cantidad",
+                            "type": "quantitative"
+                        }
+                    ]
+                },
+                "width": "container",
+                "height": 310,
+                "view": {
+                    "stroke": None
                 }
-            )
+            }
 
-            fig.update_traces(
-                textposition="inside",
-                textinfo="label+percent",
-                textfont_size=12,
-                marker=dict(
-                    line=dict(
-                        color="white",
-                        width=2
-                    )
-                )
-            )
-
-            fig.update_layout(
-                height=350,
-                margin=dict(
-                    l=5,
-                    r=5,
-                    t=10,
-                    b=10
-                ),
-                legend=dict(
-                    orientation="v",
-                    yanchor="middle",
-                    y=0.5,
-                    xanchor="left",
-                    x=1
-                ),
-                paper_bgcolor="rgba(0,0,0,0)",
-                plot_bgcolor="rgba(0,0,0,0)"
-            )
-
-            st.plotly_chart(
-                fig,
-                use_container_width=True,
-                config={"displayModeBar": False}
+            st.vega_lite_chart(
+                datos_grafico,
+                especificacion,
+                use_container_width=True
             )
 
         else:
-
             st.info(
                 "No hay clasificaciones EB, SB o BB disponibles."
             )
 
     else:
-
         st.warning(
             "No se encontró la columna de clasificación NS."
         )
-
 
 # ---------------------------------------------------------
 # 7.2 RESUMEN DE INVENTARIO
