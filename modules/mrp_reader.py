@@ -1,4 +1,3 @@
-
 import re
 import unicodedata
 from io import BytesIO
@@ -13,14 +12,14 @@ from modules.github_storage import (
 
 
 # =========================================================
-# CONFIGURACIÓN
+# 1. CONFIGURACIÓN
 # =========================================================
 
 CENTRO_PUNTA_TEATINOS = "E026"
 
 
 # =========================================================
-# NORMALIZACIÓN DE TEXTO
+# 2. NORMALIZACIÓN
 # =========================================================
 
 def normalizar_texto(valor):
@@ -32,9 +31,7 @@ def normalizar_texto(valor):
     texto = texto.replace("\n", " ")
     texto = texto.replace("\xa0", " ")
 
-    texto = re.sub(r"\s+", " ", texto)
-
-    return texto
+    return re.sub(r"\s+", " ", texto)
 
 
 def normalizar_nombre_columna(valor):
@@ -61,7 +58,6 @@ def normalizar_centro(valor):
         return ""
 
     centro = normalizar_texto(valor).upper()
-
     centro = centro.replace(" ", "")
 
     centro = re.sub(
@@ -90,7 +86,7 @@ def limpiar_codigo(valor):
 
 
 # =========================================================
-# DETECTAR FILA DE ENCABEZADOS
+# 3. DETECTAR ENCABEZADOS
 # =========================================================
 
 def detectar_encabezado(datos):
@@ -102,31 +98,20 @@ def detectar_encabezado(datos):
             for valor in fila.tolist()
         ]
 
-        tiene_centro = any(
-            valor == "CENTRO"
-            for valor in valores
-        )
-
-        tiene_material = any(
-            valor == "MATERIAL"
-            for valor in valores
-        )
-
-        # No exigimos que exista una descripción.
-        # Algunas hojas pueden tener encabezados distintos.
+        tiene_centro = "CENTRO" in valores
+        tiene_material = "MATERIAL" in valores
 
         if tiene_centro and tiene_material:
-
             return indice
 
     raise ValueError(
-        "No se encontró una fila de encabezados "
-        "que contenga las columnas Centro y Material."
+        "No se encontró la fila de encabezados "
+        "con las columnas Centro y Material."
     )
 
 
 # =========================================================
-# NORMALIZAR ENCABEZADOS
+# 4. NORMALIZAR NOMBRES DE COLUMNAS
 # =========================================================
 
 def normalizar_encabezados(datos):
@@ -135,7 +120,21 @@ def normalizar_encabezados(datos):
         "CENTRO": "Centro",
         "MATERIAL": "Material",
         "DESCRIPCION DEL MATERIAL": "Descripción del material",
-        "DESCRIPCION MATERIAL": "Descripción del material"
+        "UM": "UM",
+        "UNIDAD DE MEDIDA": "UM",
+        "MMPP ACTIVA": "MMPP Activa",
+        "PRODUCTO": "Producto",
+        "CONCAT": "Concat",
+        "STOCK ACTUAL": "Stock Actual",
+        "STOCK SEGURIDAD": "Stock Seguridad",
+        "STOCK MAXIMO": "Stock Máximo",
+        "STOCK OPTIMO": "Stock Óptimo",
+        "CONSUMO PROYECTADO": "Consumo Proyectado",
+        "CONSUMO X̄": "Consumo X̄",
+        "RIESGO MMPP": "Riesgo MMPP",
+        "RIESGO": "Riesgo",
+        "NS": "NS",
+        "NS CORREGIDO": "NS Corregido"
     }
 
     nuevas_columnas = []
@@ -144,15 +143,14 @@ def normalizar_encabezados(datos):
 
         nombre = normalizar_texto(columna)
 
-        nombre_normalizado = normalizar_nombre_columna(
+        clave = normalizar_nombre_columna(nombre)
+
+        nombre_final = equivalencias.get(
+            clave,
             nombre
         )
 
-        if nombre_normalizado in equivalencias:
-
-            nombre = equivalencias[nombre_normalizado]
-
-        nuevas_columnas.append(nombre)
+        nuevas_columnas.append(nombre_final)
 
     datos.columns = nuevas_columnas
 
@@ -160,7 +158,7 @@ def normalizar_encabezados(datos):
 
 
 # =========================================================
-# LEER UNA HOJA DEL MRP
+# 5. LEER HOJA DEL EXCEL
 # =========================================================
 
 def leer_hoja_mrp(contenido, nombre_hoja):
@@ -177,7 +175,8 @@ def leer_hoja_mrp(contenido, nombre_hoja):
     )
 
     encabezados = (
-        datos_originales.iloc[fila_encabezado]
+        datos_originales
+        .iloc[fila_encabezado]
         .fillna("")
         .apply(normalizar_texto)
     )
@@ -194,47 +193,32 @@ def leer_hoja_mrp(contenido, nombre_hoja):
         datos.columns != ""
     ]
 
+    # Eliminar filas completamente vacías
     datos = datos.dropna(how="all")
 
+    # Normalizar encabezados
     datos = normalizar_encabezados(datos)
 
-    # Eliminar registros sin material
-    if "Material" in datos.columns:
+    # Verificar columnas principales
+    columnas_requeridas = [
+        "Centro",
+        "Material"
+    ]
 
-        datos["Material"] = (
-            datos["Material"]
-            .apply(limpiar_codigo)
-        )
+    faltantes = [
+        columna
+        for columna in columnas_requeridas
+        if columna not in datos.columns
+    ]
 
-        datos = datos[
-            datos["Material"] != ""
-        ].copy()
-
-    return datos.reset_index(drop=True)
-
-
-# =========================================================
-# PREPARAR DATOS
-# =========================================================
-
-def preparar_datos(datos):
-
-    datos = datos.copy()
-
-    datos = normalizar_encabezados(datos)
-
-    if "Centro" not in datos.columns:
+    if faltantes:
 
         raise ValueError(
-            "La hoja no contiene una columna Centro."
+            f"La hoja {nombre_hoja} no contiene: "
+            + ", ".join(faltantes)
         )
 
-    if "Material" not in datos.columns:
-
-        raise ValueError(
-            "La hoja no contiene una columna Material."
-        )
-
+    # Limpiar centro y material
     datos["Centro"] = (
         datos["Centro"]
         .apply(normalizar_centro)
@@ -245,18 +229,54 @@ def preparar_datos(datos):
         .apply(limpiar_codigo)
     )
 
-    if "Concat" in datos.columns:
+    # Eliminar filas sin identificación de material
+    datos = datos[
+        (datos["Centro"] != "")
+        & (datos["Material"] != "")
+    ].copy()
 
-        datos["Concat"] = (
-            datos["Concat"]
-            .apply(limpiar_codigo)
-        )
-
-    return datos
+    return datos.reset_index(drop=True)
 
 
 # =========================================================
-# CARGAR INFORMACIÓN MRP DESDE GITHUB
+# 6. UNIR NS Y MRP
+# =========================================================
+
+def unir_hojas(ns, mrp):
+
+    claves = [
+        "Centro",
+        "Material"
+    ]
+
+    # Evitar que las columnas de identificación
+    # se dupliquen durante la unión
+    columnas_mrp = [
+        columna
+        for columna in mrp.columns
+        if columna not in claves
+    ]
+
+    mrp_para_unir = mrp[
+        claves + columnas_mrp
+    ].copy()
+
+    # Unir mediante centro y código de material
+    # Se conserva toda la información de NS
+    combinado = pd.merge(
+        ns,
+        mrp_para_unir,
+        on=claves,
+        how="left",
+        suffixes=("", "_MRP"),
+        sort=False
+    )
+
+    return combinado
+
+
+# =========================================================
+# 7. CARGAR MRP DESDE GITHUB
 # =========================================================
 
 @st.cache_data(ttl=60)
@@ -269,24 +289,22 @@ def cargar_mrp():
     if contenido is None:
 
         raise FileNotFoundError(
-            "No se encontró el archivo MRP en GitHub. "
-            "Debes cargarlo desde Administración."
+            "No se encontró el archivo MRP en GitHub."
         )
 
     if not isinstance(contenido, bytes):
 
         raise TypeError(
-            "El archivo MRP descargado no está "
-            "en formato binario."
+            "El archivo MRP no se descargó en formato binario."
         )
 
     if not contenido:
 
         raise ValueError(
-            "El archivo MRP descargado está vacío."
+            "El archivo MRP está vacío."
         )
 
-    # Leer hojas originales
+    # Leer las dos hojas
     ns = leer_hoja_mrp(
         contenido,
         "NS"
@@ -297,20 +315,16 @@ def cargar_mrp():
         "MRP"
     )
 
-    # Preparar datos
-    ns = preparar_datos(ns)
-    mrp = preparar_datos(mrp)
-
-    # Diagnóstico de centros disponibles
+    # Comprobar centros disponibles
     centros_ns = sorted(
-        ns["Centro"].dropna().unique().tolist()
+        ns["Centro"].unique().tolist()
     )
 
     centros_mrp = sorted(
-        mrp["Centro"].dropna().unique().tolist()
+        mrp["Centro"].unique().tolist()
     )
 
-    # Filtrar Punta Teatinos
+    # Comprobar registros de Punta Teatinos
     ns_punta = ns[
         ns["Centro"] == CENTRO_PUNTA_TEATINOS
     ].copy()
@@ -319,42 +333,60 @@ def cargar_mrp():
         mrp["Centro"] == CENTRO_PUNTA_TEATINOS
     ].copy()
 
-    # Comprobar resultados
-    if ns_punta.empty and mrp_punta.empty:
+    if ns_punta.empty:
 
         raise ValueError(
-            "No se encontraron registros del centro "
-            f"{CENTRO_PUNTA_TEATINOS}.\n\n"
-            f"Centros encontrados en hoja NS: {centros_ns}\n"
-            f"Centros encontrados en hoja MRP: {centros_mrp}"
+            "No se encontraron registros E026 en NS. "
+            f"Centros encontrados: {centros_ns}"
         )
 
+    if mrp_punta.empty:
+
+        raise ValueError(
+            "No se encontraron registros E026 en MRP. "
+            f"Centros encontrados: {centros_mrp}"
+        )
+
+    # Unir ambas hojas completas
+    datos_combinados = unir_hojas(
+        ns,
+        mrp
+    )
+
+    # Información adicional para diagnóstico
+    hojas = {
+        "ns": ns,
+        "mrp": mrp,
+        "ns_punta": ns_punta,
+        "mrp_punta": mrp_punta
+    }
+
     return (
-        ns_punta.reset_index(drop=True),
-        mrp_punta.reset_index(drop=True)
+        datos_combinados.reset_index(drop=True),
+        hojas
     )
 
 
 # =========================================================
-# OBTENER INFORMACIÓN DEL MRP
+# 8. OBTENER INFORMACIÓN DEL MRP
 # =========================================================
 
 def obtener_datos_mrp():
 
     try:
 
-        ns, mrp = cargar_mrp()
+        datos, hojas = cargar_mrp()
 
         return {
-            "ns": ns,
-            "mrp": mrp,
+            "datos": datos,
+            "hojas": hojas,
             "error": None
         }
 
     except Exception as error:
 
         return {
-            "ns": pd.DataFrame(),
-            "mrp": pd.DataFrame(),
+            "datos": pd.DataFrame(),
+            "hojas": {},
             "error": str(error)
         }
