@@ -19,7 +19,7 @@ CENTRO_PUNTA_TEATINOS = "E026"
 
 
 # =========================================================
-# 2. NORMALIZACIÓN
+# 2. NORMALIZACIÓN DE TEXTO
 # =========================================================
 
 def normalizar_texto(valor):
@@ -49,6 +49,11 @@ def normalizar_nombre_columna(valor):
         if not unicodedata.combining(caracter)
     )
 
+    texto = texto.replace("̄", "")
+    texto = texto.replace("Ø", "O")
+
+    texto = re.sub(r"\s+", " ", texto)
+
     return texto.strip()
 
 
@@ -60,11 +65,7 @@ def normalizar_centro(valor):
     centro = normalizar_texto(valor).upper()
     centro = centro.replace(" ", "")
 
-    centro = re.sub(
-        r"\.0$",
-        "",
-        centro
-    )
+    centro = re.sub(r"\.0$", "", centro)
 
     return centro
 
@@ -76,17 +77,13 @@ def limpiar_codigo(valor):
 
     codigo = normalizar_texto(valor)
 
-    codigo = re.sub(
-        r"\.0$",
-        "",
-        codigo
-    )
+    codigo = re.sub(r"\.0$", "", codigo)
 
     return codigo
 
 
 # =========================================================
-# 3. DETECTAR ENCABEZADOS
+# 3. DETECTAR FILA DE ENCABEZADOS
 # =========================================================
 
 def detectar_encabezado(datos):
@@ -98,10 +95,18 @@ def detectar_encabezado(datos):
             for valor in fila.tolist()
         ]
 
-        tiene_centro = "CENTRO" in valores
-        tiene_material = "MATERIAL" in valores
+        tiene_centro = any(
+            valor == "CENTRO"
+            for valor in valores
+        )
+
+        tiene_material = any(
+            valor == "MATERIAL"
+            for valor in valores
+        )
 
         if tiene_centro and tiene_material:
+
             return indice
 
     raise ValueError(
@@ -111,43 +116,153 @@ def detectar_encabezado(datos):
 
 
 # =========================================================
-# 4. NORMALIZAR NOMBRES DE COLUMNAS
+# 4. IDENTIFICAR Y NORMALIZAR COLUMNAS
 # =========================================================
 
-def normalizar_encabezados(datos):
+def identificar_nombre_columna(nombre):
+
+    clave = normalizar_nombre_columna(nombre)
+
+    # -----------------------------------------------------
+    # Columnas generales
+    # -----------------------------------------------------
 
     equivalencias = {
+
         "CENTRO": "Centro",
+
         "MATERIAL": "Material",
-        "DESCRIPCION DEL MATERIAL": "Descripción del material",
+
+        "DESCRIPCION DEL MATERIAL":
+            "Descripción del material",
+
+        "DESCRIPCION MATERIAL":
+            "Descripción del material",
+
         "UM": "UM",
+
         "UNIDAD DE MEDIDA": "UM",
+
         "MMPP ACTIVA": "MMPP Activa",
+
+        "MMPP": "MMPP Activa",
+
         "PRODUCTO": "Producto",
+
         "CONCAT": "Concat",
+
         "STOCK ACTUAL": "Stock Actual",
+
         "STOCK SEGURIDAD": "Stock Seguridad",
+
         "STOCK MAXIMO": "Stock Máximo",
+
         "STOCK OPTIMO": "Stock Óptimo",
+
         "CONSUMO PROYECTADO": "Consumo Proyectado",
-        "CONSUMO X̄": "Consumo X̄",
+
+        "CONSUMO X": "Consumo X̄",
+
+        "CONSUMO": "Consumo X̄",
+
         "RIESGO MMPP": "Riesgo MMPP",
+
         "RIESGO": "Riesgo",
+
         "NS": "NS",
-        "NS CORREGIDO": "NS Corregido"
+
+        "NS CORREGIDO": "NS Corregido",
+
+        "NS CORR": "NS Corregido",
+
+        "COMENTARIO MMPP": "Comentario MMPP",
+
+        "COMENTARIO": "Comentario"
+
     }
+
+    if clave in equivalencias:
+
+        return equivalencias[clave]
+
+    # -----------------------------------------------------
+    # Reconocimiento flexible de columnas
+    # -----------------------------------------------------
+
+    if clave.startswith("DESCRIPCION"):
+
+        return "Descripción del material"
+
+    if clave.startswith("STOCK ACTUAL"):
+
+        return "Stock Actual"
+
+    if clave.startswith("STOCK SEGURIDAD"):
+
+        return "Stock Seguridad"
+
+    if clave.startswith("STOCK MAXIMO"):
+
+        return "Stock Máximo"
+
+    if clave.startswith("STOCK OPTIMO"):
+
+        return "Stock Óptimo"
+
+    if clave.startswith("CONSUMO PROYECTADO"):
+
+        return "Consumo Proyectado"
+
+    if clave.startswith("CONSUMO"):
+
+        return "Consumo X̄"
+
+    if "RIESGO" in clave and "MMPP" in clave:
+
+        return "Riesgo MMPP"
+
+    if clave.startswith("RIESGO"):
+
+        return "Riesgo"
+
+    if clave.startswith("NS CORR"):
+
+        return "NS Corregido"
+
+    if clave.startswith("NS"):
+
+        return "NS"
+
+    if "COB" in clave and "DIA" in clave:
+
+        return "Cobertura a [Días]"
+
+    if "COB" in clave and (
+        "MES" in clave
+        or "MESES" in clave
+    ):
+
+        return "Cob. [Meses]"
+
+    if "SOBRESTOCK" in clave:
+
+        return "Sobrestock [%]"
+
+    if "COMENTARIO" in clave:
+
+        return "Comentario MMPP"
+
+    return normalizar_texto(nombre)
+
+
+def normalizar_encabezados(datos):
 
     nuevas_columnas = []
 
     for columna in datos.columns:
 
-        nombre = normalizar_texto(columna)
-
-        clave = normalizar_nombre_columna(nombre)
-
-        nombre_final = equivalencias.get(
-            clave,
-            nombre
+        nombre_final = identificar_nombre_columna(
+            columna
         )
 
         nuevas_columnas.append(nombre_final)
@@ -158,7 +273,7 @@ def normalizar_encabezados(datos):
 
 
 # =========================================================
-# 5. LEER HOJA DEL EXCEL
+# 5. LEER UNA HOJA DEL EXCEL
 # =========================================================
 
 def leer_hoja_mrp(contenido, nombre_hoja):
@@ -199,7 +314,7 @@ def leer_hoja_mrp(contenido, nombre_hoja):
     # Normalizar encabezados
     datos = normalizar_encabezados(datos)
 
-    # Verificar columnas principales
+    # Comprobar columnas principales
     columnas_requeridas = [
         "Centro",
         "Material"
@@ -218,7 +333,7 @@ def leer_hoja_mrp(contenido, nombre_hoja):
             + ", ".join(faltantes)
         )
 
-    # Limpiar centro y material
+    # Normalizar identificadores
     datos["Centro"] = (
         datos["Centro"]
         .apply(normalizar_centro)
@@ -229,7 +344,7 @@ def leer_hoja_mrp(contenido, nombre_hoja):
         .apply(limpiar_codigo)
     )
 
-    # Eliminar filas sin identificación de material
+    # Eliminar registros sin identificación
     datos = datos[
         (datos["Centro"] != "")
         & (datos["Material"] != "")
@@ -239,7 +354,7 @@ def leer_hoja_mrp(contenido, nombre_hoja):
 
 
 # =========================================================
-# 6. UNIR NS Y MRP
+# 6. UNIR HOJAS NS Y MRP
 # =========================================================
 
 def unir_hojas(ns, mrp):
@@ -249,8 +364,7 @@ def unir_hojas(ns, mrp):
         "Material"
     ]
 
-    # Evitar que las columnas de identificación
-    # se dupliquen durante la unión
+    # Evitar duplicación de identificadores
     columnas_mrp = [
         columna
         for columna in mrp.columns
@@ -261,8 +375,14 @@ def unir_hojas(ns, mrp):
         claves + columnas_mrp
     ].copy()
 
-    # Unir mediante centro y código de material
-    # Se conserva toda la información de NS
+    # Evitar duplicaciones de registros en la unión.
+    # Si existen varias filas por material en MRP,
+    # se conserva la primera para evitar multiplicar filas.
+    mrp_para_unir = mrp_para_unir.drop_duplicates(
+        subset=claves,
+        keep="first"
+    )
+
     combinado = pd.merge(
         ns,
         mrp_para_unir,
@@ -276,7 +396,39 @@ def unir_hojas(ns, mrp):
 
 
 # =========================================================
-# 7. CARGAR MRP DESDE GITHUB
+# 7. VALIDAR COLUMNAS PARA EL DASHBOARD
+# =========================================================
+
+def validar_columnas_dashboard(datos):
+
+    columnas_necesarias = [
+        "Centro",
+        "Material",
+        "Descripción del material",
+        "MMPP Activa",
+        "NS",
+        "NS Corregido",
+        "Riesgo MMPP",
+        "Consumo X̄",
+        "Stock Actual",
+        "Stock Óptimo",
+        "Stock Seguridad",
+        "Stock Máximo",
+        "Cob. [Meses]",
+        "Cobertura a [Días]"
+    ]
+
+    faltantes = [
+        columna
+        for columna in columnas_necesarias
+        if columna not in datos.columns
+    ]
+
+    return faltantes
+
+
+# =========================================================
+# 8. CARGAR MRP DESDE GITHUB
 # =========================================================
 
 @st.cache_data(ttl=60)
@@ -304,7 +456,10 @@ def cargar_mrp():
             "El archivo MRP está vacío."
         )
 
-    # Leer las dos hojas
+    # -----------------------------------------------------
+    # Leer las hojas
+    # -----------------------------------------------------
+
     ns = leer_hoja_mrp(
         contenido,
         "NS"
@@ -315,7 +470,10 @@ def cargar_mrp():
         "MRP"
     )
 
-    # Comprobar centros disponibles
+    # -----------------------------------------------------
+    # Identificar centros
+    # -----------------------------------------------------
+
     centros_ns = sorted(
         ns["Centro"].unique().tolist()
     )
@@ -324,7 +482,10 @@ def cargar_mrp():
         mrp["Centro"].unique().tolist()
     )
 
-    # Comprobar registros de Punta Teatinos
+    # -----------------------------------------------------
+    # Filtrar Punta Teatinos
+    # -----------------------------------------------------
+
     ns_punta = ns[
         ns["Centro"] == CENTRO_PUNTA_TEATINOS
     ].copy()
@@ -347,18 +508,36 @@ def cargar_mrp():
             f"Centros encontrados: {centros_mrp}"
         )
 
-    # Unir ambas hojas completas
+    # -----------------------------------------------------
+    # Unir las hojas
+    # -----------------------------------------------------
+
     datos_combinados = unir_hojas(
         ns,
         mrp
     )
 
-    # Información adicional para diagnóstico
+    # -----------------------------------------------------
+    # Diagnóstico de columnas
+    # -----------------------------------------------------
+
+    faltantes = validar_columnas_dashboard(
+        datos_combinados
+    )
+
+    # -----------------------------------------------------
+    # Información adicional
+    # -----------------------------------------------------
+
     hojas = {
         "ns": ns,
         "mrp": mrp,
         "ns_punta": ns_punta,
-        "mrp_punta": mrp_punta
+        "mrp_punta": mrp_punta,
+        "columnas_ns": ns.columns.tolist(),
+        "columnas_mrp": mrp.columns.tolist(),
+        "columnas_combinadas": datos_combinados.columns.tolist(),
+        "columnas_faltantes": faltantes
     }
 
     return (
@@ -368,7 +547,7 @@ def cargar_mrp():
 
 
 # =========================================================
-# 8. OBTENER INFORMACIÓN DEL MRP
+# 9. OBTENER INFORMACIÓN DEL MRP
 # =========================================================
 
 def obtener_datos_mrp():
