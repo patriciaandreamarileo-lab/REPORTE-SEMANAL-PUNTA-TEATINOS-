@@ -105,7 +105,6 @@ div[data-testid="stMetric"] {
 """, unsafe_allow_html=True)
 
 
-
 # =========================================================
 # 3. ENCABEZADO
 # =========================================================
@@ -370,17 +369,32 @@ def procesar_carga(
 
     try:
 
+        # Validar el archivo seleccionado
         funcion_validacion(archivo)
 
+        # Obtener el contenido binario del archivo
+        contenido = archivo.getvalue()
+
+        if not isinstance(contenido, bytes):
+
+            raise TypeError(
+                "El contenido del archivo no está "
+                "en formato binario."
+            )
+
+        # Subir a GitHub:
+        # primero la ruta y después los bytes
         subir_archivo_github(
-            archivo,
-            ruta
+            ruta,
+            contenido,
+            mensaje=f"Actualización de {nombre} desde el dashboard"
         )
 
         st.success(
             f"{nombre} actualizado correctamente en GitHub."
         )
 
+        # Limpiar datos almacenados en caché
         st.cache_data.clear()
 
     except Exception as error:
@@ -549,7 +563,7 @@ if st.button(
 
             contenido = descargar_archivo_github(ruta)
 
-            if contenido:
+            if contenido is not None:
 
                 st.success(
                     f"{nombre}: archivo disponible."
@@ -561,10 +575,11 @@ if st.button(
                     f"{nombre}: todavía no se ha cargado."
                 )
 
-        except Exception:
+        except Exception as error:
 
             st.warning(
-                f"{nombre}: no se pudo verificar su disponibilidad."
+                f"{nombre}: no se pudo verificar su disponibilidad. "
+                f"Detalle: {error}"
             )
 
 
@@ -584,4 +599,3 @@ st.markdown("""
     ENAEX CHILE | ADMINISTRACIÓN | PUNTA TEATINOS
 </div>
 """, unsafe_allow_html=True)
-
