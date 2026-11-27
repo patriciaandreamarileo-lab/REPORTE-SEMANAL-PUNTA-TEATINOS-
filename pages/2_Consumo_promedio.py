@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -83,15 +82,6 @@ def cargar_consumo():
 @st.cache_data(ttl=300)
 def cargar_datos_mrp():
 
-    """
-    Lee la hoja MRP del archivo XLSM almacenado en GitHub.
-
-    Obtiene:
-    - Stock Actual: columna W.
-    - Consumo acumulado: fila Cons. Acu.
-    - Mes de actualización: fecha de la fila 6.
-    """
-
     contenido = descargar_archivo_github(
         RUTA_MRP
     )
@@ -118,9 +108,7 @@ def cargar_datos_mrp():
 
         hoja = libro["MRP"]
 
-        # -------------------------------------------------
-        # IDENTIFICAR FECHA DE ACTUALIZACIÓN
-        # -------------------------------------------------
+        # Identificar fecha de actualización en fila 6
 
         fechas_actualizacion = [
             valor
@@ -147,9 +135,7 @@ def cargar_datos_mrp():
             fecha_actualizacion.month
         )
 
-        # -------------------------------------------------
-        # IDENTIFICAR COLUMNA DEL MES ACTUAL
-        # -------------------------------------------------
+        # Identificar columna del mes actual en fila 8
 
         encabezados = next(
             hoja.iter_rows(
@@ -180,20 +166,9 @@ def cargar_datos_mrp():
                 "con la fecha de actualización del MRP."
             )
 
-        # -------------------------------------------------
-        # LEER MATERIAS PRIMAS DE PUNTA TEATINOS
-        # -------------------------------------------------
+        # Leer materias primas de Punta Teatinos
 
         resultados = {}
-
-        # Estructura de la hoja MRP:
-        #
-        # A  = Centro
-        # B  = Material
-        # D  = UM
-        # W  = Stock Actual
-        # AA = Tipo de fila (Cons. Proy, Cons. Acu, etc.)
-        # AB en adelante = Valores mensuales
 
         for fila in hoja.iter_rows(
             min_row=9,
@@ -254,9 +229,7 @@ def cargar_datos_mrp():
                     "unidad": unidad
                 }
 
-            # ---------------------------------------------
-            # STOCK ACTUAL
-            # ---------------------------------------------
+            # Stock actual
 
             if stock_actual is not None:
 
@@ -271,9 +244,7 @@ def cargar_datos_mrp():
                 except (TypeError, ValueError):
                     pass
 
-            # ---------------------------------------------
-            # CONSUMO ACUMULADO
-            # ---------------------------------------------
+            # Consumo acumulado
 
             if tipo_normalizado == "CONSACU":
 
@@ -312,14 +283,6 @@ def cargar_datos_mrp():
 # =====================================================
 
 def obtener_datos_mrp_material(codigo_material):
-
-    """
-    Devuelve:
-    - Stock actual.
-    - Consumo acumulado.
-    - Unidad de medida.
-    - Fecha de actualización del MRP.
-    """
 
     datos_mrp, fecha_mrp = cargar_datos_mrp()
 
@@ -420,16 +383,12 @@ if faltantes:
 
 datos = datos_originales.copy()
 
-# Limpiar códigos de materiales
-
 datos["Material"] = (
     datos["Material"]
     .astype(str)
     .str.strip()
     .str.replace(r"\.0$", "", regex=True)
 )
-
-# Limpiar centro
 
 datos["Centro"] = (
     datos["Centro"]
@@ -438,7 +397,7 @@ datos["Centro"] = (
     .str.upper()
 )
 
-# Filtrar PUNTA TEATINOS
+# Filtrar Punta Teatinos
 
 datos = datos[
     datos["Centro"] == CENTRO_PUNTA_TEATINOS
@@ -463,7 +422,7 @@ datos["Clase de movimiento"] = (
     .str.strip()
 )
 
-# Considerar exclusivamente movimientos 261 y 262
+# Considerar movimientos 261 y 262
 
 datos = datos[
     datos["Clase de movimiento"].isin(["261", "262"])
@@ -721,9 +680,8 @@ datos_material["Mes"] = (
 )
 
 # Se conserva el signo original de SAP.
-# 261 normalmente registra cantidades negativas.
-# 262 registra anulaciones positivas.
-# El negativo de la suma representa el consumo neto.
+# El consumo neto se calcula como el negativo de la suma
+# de los movimientos 261 y 262.
 
 consumo_mensual = (
     datos_material
@@ -749,15 +707,6 @@ consumo_mensual = consumo_mensual.sort_values("Fecha")
 # =====================================================
 # 14. INDICADORES DEL MATERIAL
 # =====================================================
-
-# Los dos primeros indicadores se obtienen directamente
-# de la hoja MRP del Excel:
-#
-# - Stock Actual: columna W de la fila principal.
-# - Consumo real a la fecha: fila Cons. Acu.
-#   en la columna correspondiente al mes de actualización.
-#
-# El tercer indicador se mantiene desde los movimientos SAP.
 
 cantidad_movimientos = len(datos_material)
 
@@ -792,10 +741,6 @@ unidad_mostrar = (
 col1, col2, col3 = st.columns(3)
 
 
-# -----------------------------------------------------
-# PRIMERA TARJETA: STOCK ACTUAL
-# -----------------------------------------------------
-
 if stock_actual_mrp is not None:
 
     col1.metric(
@@ -811,10 +756,6 @@ else:
     )
 
 
-# -----------------------------------------------------
-# SEGUNDA TARJETA: CONSUMO REAL A LA FECHA
-# -----------------------------------------------------
-
 if consumo_acumulado_mrp is not None:
 
     col2.metric(
@@ -829,10 +770,6 @@ else:
         "No disponible"
     )
 
-
-# -----------------------------------------------------
-# TERCERA TARJETA: MOVIMIENTOS SAP
-# -----------------------------------------------------
 
 col3.metric(
     "Movimientos SAP",
@@ -896,8 +833,6 @@ if not consumo_mensual.empty:
 
     fig.update_layout(
         height=430,
-        paper_bgcolor="white",
-        plot_bgcolor="white",
         margin=dict(
             t=25,
             b=30,
@@ -918,7 +853,8 @@ if not consumo_mensual.empty:
 
     st.plotly_chart(
         fig,
-        use_container_width=True
+        use_container_width=True,
+        config={"displayModeBar": False}
     )
 
 else:
@@ -995,7 +931,6 @@ st.caption(
 st.divider()
 
 
-
 # =====================================================
 # 17. PROYECCIÓN DE CONSUMO MEDIANTE PROMEDIO MÓVIL
 # =====================================================
@@ -1011,7 +946,7 @@ st.markdown(
 if len(consumo_mensual) >= 1:
 
     # -------------------------------------------------
-    # 1. PREPARAR HISTORIAL DE CONSUMO REAL
+    # 17.1 PREPARAR HISTORIAL DE CONSUMO REAL
     # -------------------------------------------------
 
     historial = consumo_mensual[
@@ -1050,13 +985,8 @@ if len(consumo_mensual) >= 1:
     )
 
     # -------------------------------------------------
-    # 2. CALCULAR PROMEDIO MÓVIL DE TRES MESES
+    # 17.2 CALCULAR PROMEDIO MÓVIL DE TRES MESES
     # -------------------------------------------------
-
-    # Se proyectarán los siguientes tres meses.
-    # Cada proyección utiliza los tres valores anteriores.
-    # Los valores proyectados se incorporan al cálculo
-    # del siguiente mes.
 
     MESES_PROYECCION = 3
 
@@ -1066,20 +996,16 @@ if len(consumo_mensual) >= 1:
 
     for i in range(MESES_PROYECCION):
 
-        # Obtener los últimos tres valores disponibles
         ultimos_tres_meses = valores_historicos[-3:]
 
-        # Calcular promedio móvil
         promedio_movil = sum(
             ultimos_tres_meses
         ) / len(ultimos_tres_meses)
 
-        # Identificar el mes proyectado
         mes_proyectado = (
             ultimo_mes + i + 1
         )
 
-        # Guardar resultado
         resultados_proyeccion.append({
             "Mes": mes_proyectado,
             "Fecha": mes_proyectado.to_timestamp(),
@@ -1087,8 +1013,9 @@ if len(consumo_mensual) >= 1:
             "Tipo": "Proyección"
         })
 
-        # Incorporar la proyección al historial
-        # para calcular el promedio del siguiente mes
+        # Incorporar el valor proyectado al historial
+        # para calcular el siguiente mes.
+
         valores_historicos.append(
             promedio_movil
         )
@@ -1098,7 +1025,30 @@ if len(consumo_mensual) >= 1:
     )
 
     # -------------------------------------------------
-    # 3. PREPARAR DATOS REALES
+    # 17.3 CONECTAR CONSUMO REAL Y PROYECCIÓN
+    # -------------------------------------------------
+
+    # El último punto real se agrega también a la serie
+    # de proyección para que la línea naranja comience
+    # exactamente donde termina la línea azul.
+
+    punto_union = pd.DataFrame([{
+        "Mes": ultimo_mes,
+        "Fecha": ultimo_mes.to_timestamp(),
+        "Consumo": float(consumo_real.iloc[-1]),
+        "Tipo": "Proyección"
+    }])
+
+    proyeccion = pd.concat(
+        [
+            punto_union,
+            proyeccion
+        ],
+        ignore_index=True
+    )
+
+    # -------------------------------------------------
+    # 17.4 PREPARAR DATOS REALES
     # -------------------------------------------------
 
     reales = consumo_real.reset_index()
@@ -1115,7 +1065,7 @@ if len(consumo_mensual) >= 1:
     reales["Tipo"] = "Consumo real"
 
     # -------------------------------------------------
-    # 4. UNIR CONSUMO REAL Y PROYECCIÓN
+    # 17.5 UNIR SERIES
     # -------------------------------------------------
 
     datos_grafico = pd.concat(
@@ -1131,7 +1081,7 @@ if len(consumo_mensual) >= 1:
     )
 
     # -------------------------------------------------
-    # 5. GRÁFICO
+    # 17.6 GRÁFICO CON LÍNEAS CONECTADAS Y COLORES
     # -------------------------------------------------
 
     fig_proyeccion = px.line(
@@ -1189,7 +1139,7 @@ if len(consumo_mensual) >= 1:
     )
 
     # -------------------------------------------------
-    # 6. TABLA DE CÁLCULO DE LA PROYECCIÓN
+    # 17.7 TABLA DE CÁLCULO DE LA PROYECCIÓN
     # -------------------------------------------------
 
     st.markdown("#### Detalle del promedio móvil")
@@ -1264,4 +1214,3 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
-
