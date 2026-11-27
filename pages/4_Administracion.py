@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 
@@ -10,12 +9,9 @@ from modules.github_storage import (
 )
 
 
-# =========================================================
-# 1. CONFIGURACIÓN
-# =========================================================
-
-COLOR_AZUL = "#102F4A"
-COLOR_AZUL_MEDIO = "#286B9E"
+# =====================================================
+# 1. CONFIGURACIÓN GENERAL
+# =====================================================
 
 RUTA_MRP = "data/MRP/Planificacion_MRP.xlsm"
 
@@ -28,9 +24,9 @@ RUTA_PRECIOS = (
 )
 
 
-# =========================================================
+# =====================================================
 # 2. ESTILOS
-# =========================================================
+# =====================================================
 
 st.markdown("""
 <style>
@@ -39,65 +35,22 @@ st.markdown("""
     background-color: #F4F7FB;
 }
 
-.main .block-container {
-    max-width: 1400px;
-    padding-top: 2rem;
-    padding-bottom: 3rem;
+div[data-testid="stMetric"] {
+    background: white;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid #E2E8F0;
 }
 
 .admin-header {
-    background: linear-gradient(
-        110deg,
-        #102F4A 0%,
-        #286B9E 100%
-    );
-    padding: 28px 32px;
-    border-radius: 15px;
+    background: linear-gradient(110deg, #102F4A, #286B9E);
+    padding: 28px;
+    border-radius: 14px;
     color: white;
-    margin-bottom: 30px;
+    margin-bottom: 20px;
 }
 
-.admin-title {
-    color: white;
-    font-size: 29px;
-    font-weight: 800;
-}
-
-.admin-subtitle {
-    color: #E5EDF5;
-    font-size: 15px;
-    margin-top: 8px;
-}
-
-.section-description {
-    color: #718096;
-    font-size: 14px;
-    margin-bottom: 18px;
-}
-
-div[data-testid="stVerticalBlockBorderWrapper"] {
-    background-color: white;
-    border-radius: 12px;
-    border-color: #D9E0E8;
-}
-
-div[data-testid="stMetric"] {
-    background-color: white;
-    border: 1px solid #DCE4EF;
-    border-radius: 10px;
-    padding: 15px;
-}
-
-.stButton > button {
-    background-color: #102F4A;
-    color: white;
-    border: none;
-    border-radius: 8px;
-    font-weight: 600;
-}
-
-.stButton > button:hover {
-    background-color: #286B9E;
+.admin-header h2 {
     color: white;
 }
 
@@ -105,38 +58,64 @@ div[data-testid="stMetric"] {
 """, unsafe_allow_html=True)
 
 
-# =========================================================
+# =====================================================
 # 3. ENCABEZADO
-# =========================================================
+# =====================================================
 
-st.markdown(
-    '<div class="admin-header">'
-    '<div class="admin-title">ADMINISTRACIÓN</div>'
-    '<div class="admin-subtitle">'
-    'ENAEX CHILE | Gestión y actualización de archivos '
-    '| Punta Teatinos'
-    '</div>'
-    '</div>',
-    unsafe_allow_html=True
-)
+st.markdown("""
+<div class="admin-header">
+    <div style="
+        font-size:13px;
+        font-weight:bold;
+        letter-spacing:2px;
+        color:#DCEAF7;
+    ">
+        ENAEX CHILE
+    </div>
+
+    <h2 style="margin-top:10px;">
+        ADMINISTRACIÓN
+    </h2>
+
+    <p style="color:#DCEAF7;margin-bottom:0;">
+        Gestión y actualización de los archivos utilizados
+        en el dashboard de materias primas de Punta Teatinos.
+    </p>
+</div>
+""", unsafe_allow_html=True)
+
+st.divider()
 
 
-# =========================================================
+# =====================================================
 # 4. AUTENTICACIÓN
-# =========================================================
+# =====================================================
+
+st.subheader("Acceso de administrador")
 
 if "admin_autorizado" not in st.session_state:
     st.session_state.admin_autorizado = False
 
 
+def validar_clave(clave):
+
+    try:
+
+        clave_correcta = st.secrets["CLAVE_SUBIDA"]
+
+        return clave == clave_correcta
+
+    except Exception:
+
+        st.error(
+            "No se encontró CLAVE_SUBIDA en Streamlit Secrets. "
+            "Revisa la configuración de la aplicación."
+        )
+
+        return False
+
+
 if not st.session_state.admin_autorizado:
-
-    st.subheader("Acceso de administrador")
-
-    st.markdown(
-        "Ingresa la contraseña para habilitar "
-        "la carga y actualización de archivos."
-    )
 
     clave = st.text_input(
         "Contraseña de administración",
@@ -149,20 +128,7 @@ if not st.session_state.admin_autorizado:
         use_container_width=True
     ):
 
-        try:
-
-            clave_correcta = st.secrets["CLAVE_SUBIDA"]
-
-        except Exception:
-
-            st.error(
-                "No se encontró CLAVE_SUBIDA en los secretos "
-                "de Streamlit. Revisa la configuración."
-            )
-
-            st.stop()
-
-        if clave == clave_correcta:
+        if validar_clave(clave):
 
             st.session_state.admin_autorizado = True
             st.rerun()
@@ -176,17 +142,17 @@ if not st.session_state.admin_autorizado:
     st.stop()
 
 
-# =========================================================
-# 5. SESIÓN AUTORIZADA
-# =========================================================
+# =====================================================
+# 5. CERRAR SESIÓN
+# =====================================================
 
-col1, col2 = st.columns([4, 1])
+col_titulo, col_cerrar = st.columns([4, 1])
 
-with col1:
+with col_titulo:
 
     st.success("Acceso autorizado.")
 
-with col2:
+with col_cerrar:
 
     if st.button(
         "Cerrar sesión",
@@ -200,9 +166,26 @@ with col2:
 st.divider()
 
 
-# =========================================================
-# 6. FUNCIONES DE VALIDACIÓN
-# =========================================================
+# =====================================================
+# 6. FUNCIÓN PARA LEER EXCEL
+# =====================================================
+
+def leer_excel(archivo, hoja="Data", nrows=None):
+
+    contenido = archivo.getvalue()
+
+    return pd.read_excel(
+        BytesIO(contenido),
+        sheet_name=hoja,
+        header=0,
+        nrows=nrows,
+        engine="openpyxl"
+    )
+
+
+# =====================================================
+# 7. VALIDACIÓN DEL MRP
+# =====================================================
 
 def validar_mrp(archivo):
 
@@ -219,6 +202,12 @@ def validar_mrp(archivo):
             "El archivo MRP no contiene la hoja NS."
         )
 
+    if "MRP" not in excel.sheet_names:
+
+        raise ValueError(
+            "El archivo MRP no contiene la hoja MRP."
+        )
+
     datos = pd.read_excel(
         BytesIO(contenido),
         sheet_name="NS",
@@ -230,13 +219,10 @@ def validar_mrp(archivo):
 
     for _, fila in datos.iterrows():
 
-        valores = (
-            fila.fillna("")
-            .astype(str)
-            .str.strip()
-            .str.upper()
-            .tolist()
-        )
+        valores = [
+            str(valor).strip().upper()
+            for valor in fila.fillna("").tolist()
+        ]
 
         if (
             "CENTRO" in valores
@@ -249,12 +235,16 @@ def validar_mrp(archivo):
     if not encabezados_encontrados:
 
         raise ValueError(
-            "No se encontraron los encabezados "
-            "Centro y Material en la hoja NS."
+            "No se encontraron los encabezados Centro "
+            "y Material en la hoja NS."
         )
 
     return True
 
+
+# =====================================================
+# 8. VALIDACIÓN DEL CONSUMO MENSUAL
+# =====================================================
 
 def validar_consumo(archivo):
 
@@ -269,11 +259,10 @@ def validar_consumo(archivo):
             "El archivo de consumo no contiene la hoja Data."
         )
 
-    datos = pd.read_excel(
-        BytesIO(archivo.getvalue()),
-        sheet_name="Data",
-        nrows=5,
-        engine="openpyxl"
+    datos = leer_excel(
+        archivo,
+        hoja="Data",
+        nrows=5
     )
 
     columnas_requeridas = [
@@ -300,6 +289,10 @@ def validar_consumo(archivo):
     return True
 
 
+# =====================================================
+# 9. VALIDACIÓN DE PRECIOS
+# =====================================================
+
 def validar_precios(archivo):
 
     excel = pd.ExcelFile(
@@ -313,11 +306,10 @@ def validar_precios(archivo):
             "El archivo de precios no contiene la hoja Data."
         )
 
-    datos = pd.read_excel(
-        BytesIO(archivo.getvalue()),
-        sheet_name="Data",
-        nrows=5,
-        engine="openpyxl"
+    datos = leer_excel(
+        archivo,
+        hoja="Data",
+        nrows=5
     )
 
     columnas_requeridas = [
@@ -329,7 +321,7 @@ def validar_precios(archivo):
         "Moneda",
         "Impte.mon.local",
         "Ctd.en UM entrada",
-        "Un.medida de entrada"
+        "Proveedor"
     ]
 
     faltantes = [
@@ -348,9 +340,9 @@ def validar_precios(archivo):
     return True
 
 
-# =========================================================
-# 7. FUNCIÓN GENERAL DE CARGA
-# =========================================================
+# =====================================================
+# 10. FUNCIÓN GENERAL PARA SUBIR ARCHIVOS
+# =====================================================
 
 def procesar_carga(
     archivo,
@@ -359,42 +351,45 @@ def procesar_carga(
     nombre
 ):
 
-    if archivo is None:
-
-        st.warning(
-            "Primero debes seleccionar un archivo."
-        )
-
-        return
-
     try:
 
-        # Validar el archivo seleccionado
+        if archivo is None:
+
+            st.warning(
+                "Primero debes seleccionar un archivo."
+            )
+
+            return
+
+        # Validar estructura del Excel
         funcion_validacion(archivo)
 
-        # Obtener el contenido binario del archivo
+        # Obtener contenido binario
         contenido = archivo.getvalue()
 
         if not isinstance(contenido, bytes):
 
             raise TypeError(
-                "El contenido del archivo no está "
-                "en formato binario."
+                "El contenido del archivo no está en formato binario."
             )
 
-        # Subir a GitHub:
-        # primero la ruta y después los bytes
-        subir_archivo_github(
+        # Guardar archivo en GitHub
+        resultado = subir_archivo_github(
             ruta,
             contenido,
-            mensaje=f"Actualización de {nombre} desde el dashboard"
+            mensaje=f"Actualización de {nombre} desde Punta Teatinos"
         )
+
+        if resultado is not True:
+
+            raise Exception(
+                "GitHub no confirmó la actualización del archivo."
+            )
 
         st.success(
             f"{nombre} actualizado correctamente en GitHub."
         )
 
-        # Limpiar datos almacenados en caché
         st.cache_data.clear()
 
     except Exception as error:
@@ -404,198 +399,250 @@ def procesar_carga(
         )
 
 
-# =========================================================
-# 8. ACTUALIZACIÓN DEL MRP
-# =========================================================
+# =====================================================
+# 11. ACTUALIZACIÓN DEL MRP
+# =====================================================
 
 st.subheader("Actualización del MRP")
 
 st.markdown(
-    '<div class="section-description">'
-    'Carga la versión actualizada del archivo MRP '
-    'utilizado por Punta Teatinos.'
-    '</div>',
-    unsafe_allow_html=True
+    "Carga la nueva versión del archivo MRP. "
+    "Este archivo reemplazará la versión anterior "
+    "almacenada en GitHub."
 )
 
-with st.container(border=True):
+archivo_mrp = st.file_uploader(
+    "Seleccionar archivo MRP",
+    type=["xlsm"],
+    key="subir_mrp"
+)
 
-    archivo_mrp = st.file_uploader(
-        "Seleccionar archivo MRP",
-        type=["xlsm"],
-        key="subir_mrp_punta"
+if archivo_mrp is not None:
+
+    st.caption(
+        f"Archivo seleccionado: {archivo_mrp.name}"
     )
 
-    if archivo_mrp is not None:
+    if st.button(
+        "Actualizar MRP",
+        use_container_width=True,
+        key="boton_mrp"
+    ):
 
-        st.caption(
-            f"Archivo seleccionado: {archivo_mrp.name}"
+        procesar_carga(
+            archivo_mrp,
+            RUTA_MRP,
+            validar_mrp,
+            "El MRP"
         )
-
-        if st.button(
-            "Actualizar MRP",
-            use_container_width=True,
-            key="boton_mrp_punta"
-        ):
-
-            procesar_carga(
-                archivo_mrp,
-                RUTA_MRP,
-                validar_mrp,
-                "El MRP"
-            )
 
 
 st.divider()
 
 
-# =========================================================
-# 9. ACTUALIZACIÓN DEL CONSUMO SAP
-# =========================================================
+# =====================================================
+# 12. ACTUALIZACIÓN DEL CONSUMO MENSUAL
+# =====================================================
 
 st.subheader("Actualización del consumo mensual")
 
 st.markdown(
-    '<div class="section-description">'
-    'Carga el archivo Excel exportado desde SAP '
-    'con los movimientos de consumo de Punta Teatinos.'
-    '</div>',
-    unsafe_allow_html=True
+    "Carga el Excel exportado desde SAP con los movimientos "
+    "de consumo de materias primas de Punta Teatinos."
 )
 
-with st.container(border=True):
+archivo_consumo = st.file_uploader(
+    "Seleccionar archivo de consumo mensual",
+    type=["xlsx"],
+    key="subir_consumo"
+)
 
-    archivo_consumo = st.file_uploader(
-        "Seleccionar archivo de consumo SAP",
-        type=["xlsx"],
-        key="subir_consumo_punta"
+if archivo_consumo is not None:
+
+    st.caption(
+        f"Archivo seleccionado: {archivo_consumo.name}"
     )
 
-    if archivo_consumo is not None:
+    if st.button(
+        "Actualizar consumo mensual",
+        use_container_width=True,
+        key="boton_consumo"
+    ):
 
-        st.caption(
-            f"Archivo seleccionado: {archivo_consumo.name}"
+        procesar_carga(
+            archivo_consumo,
+            RUTA_CONSUMO,
+            validar_consumo,
+            "El consumo mensual de Punta Teatinos"
         )
-
-        if st.button(
-            "Actualizar consumo mensual",
-            use_container_width=True,
-            key="boton_consumo_punta"
-        ):
-
-            procesar_carga(
-                archivo_consumo,
-                RUTA_CONSUMO,
-                validar_consumo,
-                "El consumo mensual de Punta Teatinos"
-            )
 
 
 st.divider()
 
 
-# =========================================================
-# 10. ACTUALIZACIÓN DE PRECIOS
-# =========================================================
+# =====================================================
+# 13. ACTUALIZACIÓN DE PRECIOS DE PUNTA TEATINOS
+# =====================================================
 
-st.subheader("Actualización de precios")
+st.subheader("Actualización de precios de Punta Teatinos")
 
 st.markdown(
-    '<div class="section-description">'
-    'Carga el archivo Excel con los movimientos de entrada '
-    'de mercancías y precios de las materias primas '
-    'de Punta Teatinos.'
-    '</div>',
-    unsafe_allow_html=True
+    "Carga el Excel exportado desde SAP con los movimientos "
+    "de entrada de mercancías y precios de las materias primas "
+    "de Punta Teatinos."
 )
 
-with st.container(border=True):
+archivo_precios = st.file_uploader(
+    "Seleccionar archivo de precios",
+    type=["xlsx"],
+    key="subir_precios"
+)
 
-    archivo_precios = st.file_uploader(
-        "Seleccionar archivo de precios SAP",
-        type=["xlsx"],
-        key="subir_precios_punta"
+if archivo_precios is not None:
+
+    st.caption(
+        f"Archivo seleccionado: {archivo_precios.name}"
     )
 
-    if archivo_precios is not None:
+    if st.button(
+        "Actualizar precios de Punta Teatinos",
+        use_container_width=True,
+        key="boton_precios"
+    ):
 
-        st.caption(
-            f"Archivo seleccionado: {archivo_precios.name}"
+        procesar_carga(
+            archivo_precios,
+            RUTA_PRECIOS,
+            validar_precios,
+            "Los precios de Punta Teatinos"
         )
-
-        if st.button(
-            "Actualizar precios",
-            use_container_width=True,
-            key="boton_precios_punta"
-        ):
-
-            procesar_carga(
-                archivo_precios,
-                RUTA_PRECIOS,
-                validar_precios,
-                "Los precios de Punta Teatinos"
-            )
 
 
 st.divider()
 
 
-# =========================================================
-# 11. ESTADO DE ARCHIVOS EN GITHUB
-# =========================================================
+# =====================================================
+# 14. ESTADO DE LOS ARCHIVOS EN GITHUB
+# =====================================================
 
 st.subheader("Archivos almacenados en GitHub")
 
-archivos = [
-    ("Archivo MRP", RUTA_MRP),
-    ("Consumo SAP", RUTA_CONSUMO),
-    ("Precios SAP", RUTA_PRECIOS)
-]
+col1, col2, col3 = st.columns(3)
 
-if st.button(
-    "Verificar archivos almacenados",
-    use_container_width=True
-):
 
-    for nombre, ruta in archivos:
+# -----------------------------------------------------
+# ESTADO DEL MRP
+# -----------------------------------------------------
 
-        try:
+with col1:
 
-            contenido = descargar_archivo_github(ruta)
+    try:
 
-            if contenido is not None:
+        mrp_guardado = descargar_archivo_github(
+            RUTA_MRP
+        )
 
-                st.success(
-                    f"{nombre}: archivo disponible."
-                )
+        if mrp_guardado:
 
-            else:
-
-                st.warning(
-                    f"{nombre}: todavía no se ha cargado."
-                )
-
-        except Exception as error:
-
-            st.warning(
-                f"{nombre}: no se pudo verificar su disponibilidad. "
-                f"Detalle: {error}"
+            st.success(
+                "MRP: archivo disponible"
             )
 
+        else:
 
-# =========================================================
-# 12. PIE DE PÁGINA
-# =========================================================
+            st.warning(
+                "MRP: archivo no encontrado"
+            )
 
-st.markdown("""
-<div style="
-    text-align:center;
-    color:#8795A6;
-    font-size:12px;
-    margin-top:45px;
-    padding:18px;
-    border-top:1px solid #DCE4EF;
-">
-    ENAEX CHILE | ADMINISTRACIÓN | PUNTA TEATINOS
-</div>
-""", unsafe_allow_html=True)
+    except Exception as error:
+
+        st.warning(
+            f"MRP: no fue posible verificar el archivo. {error}"
+        )
+
+
+# -----------------------------------------------------
+# ESTADO DEL CONSUMO
+# -----------------------------------------------------
+
+with col2:
+
+    try:
+
+        consumo_guardado = descargar_archivo_github(
+            RUTA_CONSUMO
+        )
+
+        if consumo_guardado:
+
+            st.success(
+                "Consumo: archivo disponible"
+            )
+
+        else:
+
+            st.warning(
+                "Consumo: archivo no encontrado"
+            )
+
+    except Exception as error:
+
+        st.warning(
+            f"Consumo: no fue posible verificar el archivo. {error}"
+        )
+
+
+# -----------------------------------------------------
+# ESTADO DE PRECIOS
+# -----------------------------------------------------
+
+with col3:
+
+    try:
+
+        precios_guardados = descargar_archivo_github(
+            RUTA_PRECIOS
+        )
+
+        if precios_guardados:
+
+            st.success(
+                "Precios: archivo disponible"
+            )
+
+        else:
+
+            st.warning(
+                "Precios: archivo no encontrado"
+            )
+
+    except Exception as error:
+
+        st.warning(
+            f"Precios: no fue posible verificar el archivo. {error}"
+        )
+
+
+st.divider()
+
+
+# =====================================================
+# 15. PIE DE PÁGINA
+# =====================================================
+
+st.markdown(
+    """
+    <div style="
+        text-align:center;
+        color:#8492A6;
+        font-size:12px;
+        margin-top:45px;
+        padding:15px;
+    ">
+        ENAEX CHILE | ADMINISTRACIÓN DEL DASHBOARD
+        | PUNTA TEATINOS | CENTRO E026
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
