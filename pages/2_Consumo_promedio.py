@@ -1,3 +1,4 @@
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -16,8 +17,8 @@ from modules.github_storage import (
 # 1. CONFIGURACIÓN GENERAL
 # =====================================================
 
-RUTA_CONSUMO = "data/CONSUMO/consumo_punta_teatinos.xlsx"
-CENTRO_PUNTA_TEATINOS = "E026"
+RUTA_CONSUMO = "data/CONSUMO/consumo_rio_loa.xlsx"
+CENTRO_RIO_LOA = "E024"
 
 
 # =====================================================
@@ -63,7 +64,7 @@ def cargar_consumo():
 
         raise Exception(
             "No se encontró el archivo de consumo mensual "
-            "de Punta Teatinos en GitHub."
+            "de Río Loa en GitHub."
         )
 
     df = pd.read_excel(
@@ -89,7 +90,7 @@ def cargar_datos_mrp():
     if contenido is None:
 
         raise Exception(
-            "No se encontró el archivo MRP de Punta Teatinos en GitHub."
+            "No se encontró el archivo MRP de Río Loa en GitHub."
         )
 
     libro = load_workbook(
@@ -166,7 +167,7 @@ def cargar_datos_mrp():
                 "con la fecha de actualización del MRP."
             )
 
-        # Leer materias primas de Punta Teatinos
+        # Leer materias primas de Río Loa
 
         resultados = {}
 
@@ -180,7 +181,7 @@ def cargar_datos_mrp():
                 fila[0] or ""
             ).strip().upper()
 
-            if centro != CENTRO_PUNTA_TEATINOS:
+            if centro != CENTRO_RIO_LOA:
                 continue
 
             material = fila[1]
@@ -397,17 +398,17 @@ datos["Centro"] = (
     .str.upper()
 )
 
-# Filtrar Punta Teatinos
+# Filtrar Río Loa
 
 datos = datos[
-    datos["Centro"] == CENTRO_PUNTA_TEATINOS
+    datos["Centro"] == CENTRO_RIO_LOA
 ].copy()
 
 if datos.empty:
 
     st.error(
         "No se encontraron registros correspondientes "
-        "al centro E026 (Punta Teatinos)."
+        "al centro E024 (Río Loa)."
     )
 
     st.stop()
@@ -511,7 +512,7 @@ st.title("Consumo mensual de materias primas")
 
 st.markdown(
     "Análisis histórico de los movimientos y consumo "
-    "de materias primas de Punta Teatinos."
+    "de materias primas de Río Loa."
 )
 
 encabezado_html = (
@@ -521,10 +522,10 @@ encabezado_html = (
     'ANÁLISIS INDIVIDUAL'
     '</div>'
     '<div style="font-size:34px;font-weight:750;color:#FFFFFF;margin-top:20px;">'
-    'PUNTA TEATINOS'
+    'RÍO LOA'
     '</div>'
     '<div style="font-size:17px;color:#FFFFFF;margin-top:20px;">'
-    'La Serena | Enaex Chile | Centro E026'
+    'Calama | Enaex Chile | Centro E024'
     '</div>'
     '</div>'
 )
@@ -551,7 +552,7 @@ st.markdown(
 busqueda = st.text_input(
     "Buscar material",
     placeholder="Escribe un código o nombre de material...",
-    key="busqueda_consumo"
+    key="busqueda_consumo_rio_loa"
 )
 
 catalogo_filtrado = catalogo.copy()
@@ -596,7 +597,7 @@ seleccion = st.selectbox(
     format_func=lambda material: (
         f"{material[0]} -- {material[1]}"
     ),
-    key="selector_consumo_punta_teatinos"
+    key="selector_consumo_rio_loa"
 )
 
 codigo_seleccionado = seleccion[0]
@@ -653,7 +654,7 @@ if len(unidades) > 1:
     unidad_seleccionada = st.selectbox(
         "Unidad de medida",
         options=unidades,
-        key="unidad_consumo"
+        key="unidad_consumo_rio_loa"
     )
 
     datos_material = datos_material[
@@ -1209,7 +1210,7 @@ st.markdown(
         padding:15px;
     ">
         ENAEX CHILE | ANÁLISIS DE CONSUMO DE MATERIAS PRIMAS
-        | PUNTA TEATINOS | CENTRO E026
+        | RÍO LOA | CENTRO E024
     </div>
     """,
     unsafe_allow_html=True
