@@ -18,7 +18,7 @@ from modules.github_storage import (
 # =====================================================
 
 RUTA_CONSUMO = "data/CONSUMO/consumo_rio_loa.xlsx"
-CENTRO_RIO_LOA = "E024"
+CENTRO_PUNTA_TEATINOS = "E026"
 
 
 # =====================================================
@@ -64,7 +64,7 @@ def cargar_consumo():
 
         raise Exception(
             "No se encontró el archivo de consumo mensual "
-            "de Río Loa en GitHub."
+            "de Punta Teatinos en GitHub."
         )
 
     df = pd.read_excel(
@@ -181,7 +181,7 @@ def cargar_datos_mrp():
                 fila[0] or ""
             ).strip().upper()
 
-            if centro != CENTRO_RIO_LOA:
+            if centro != CENTRO_PUNTA_TEATINOS:
                 continue
 
             material = fila[1]
@@ -408,7 +408,7 @@ if datos.empty:
 
     st.error(
         "No se encontraron registros correspondientes "
-        "al centro E024 (Río Loa)."
+        "al centro E026 (Punta Teatinos)."
     )
 
     st.stop()
@@ -512,7 +512,7 @@ st.title("Consumo mensual de materias primas")
 
 st.markdown(
     "Análisis histórico de los movimientos y consumo "
-    "de materias primas de Río Loa."
+    "de materias primas de Punta Teatinos."
 )
 
 encabezado_html = (
@@ -522,10 +522,10 @@ encabezado_html = (
     'ANÁLISIS INDIVIDUAL'
     '</div>'
     '<div style="font-size:34px;font-weight:750;color:#FFFFFF;margin-top:20px;">'
-    'RÍO LOA'
+    'PUNTA TEATINOS'
     '</div>'
     '<div style="font-size:17px;color:#FFFFFF;margin-top:20px;">'
-    'Calama | Enaex Chile | Centro E024'
+    'La Serena | Enaex Chile | Centro E026'
     '</div>'
     '</div>'
 )
@@ -552,7 +552,7 @@ st.markdown(
 busqueda = st.text_input(
     "Buscar material",
     placeholder="Escribe un código o nombre de material...",
-    key="busqueda_consumo_rio_loa"
+    key="busqueda_consumo_punta-teatinos"
 )
 
 catalogo_filtrado = catalogo.copy()
@@ -654,7 +654,7 @@ if len(unidades) > 1:
     unidad_seleccionada = st.selectbox(
         "Unidad de medida",
         options=unidades,
-        key="unidad_consumo_rio_loa"
+        key="unidad_consumo_punta_teatinos"
     )
 
     datos_material = datos_material[
@@ -1210,7 +1210,7 @@ st.markdown(
         padding:15px;
     ">
         ENAEX CHILE | ANÁLISIS DE CONSUMO DE MATERIAS PRIMAS
-        | RÍO LOA | CENTRO E024
+        | PUNTA TEATINOS| CENTRO E026
     </div>
     """,
     unsafe_allow_html=True
