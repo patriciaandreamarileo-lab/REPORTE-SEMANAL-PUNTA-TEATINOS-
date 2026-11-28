@@ -1,4 +1,3 @@
-
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -17,7 +16,7 @@ from modules.github_storage import (
 # 1. CONFIGURACIÓN GENERAL
 # =====================================================
 
-RUTA_CONSUMO = "data/CONSUMO/consumo_rio_loa.xlsx"
+RUTA_CONSUMO = "data/CONSUMO/consumo_punta_teatinos.xlsx"
 CENTRO_PUNTA_TEATINOS = "E026"
 
 
@@ -90,7 +89,7 @@ def cargar_datos_mrp():
     if contenido is None:
 
         raise Exception(
-            "No se encontró el archivo MRP de Río Loa en GitHub."
+            "No se encontró el archivo MRP de Punta Teatinos en GitHub."
         )
 
     libro = load_workbook(
@@ -167,7 +166,7 @@ def cargar_datos_mrp():
                 "con la fecha de actualización del MRP."
             )
 
-        # Leer materias primas de Río Loa
+        # Leer materias primas de Punta Teatinos
 
         resultados = {}
 
@@ -398,10 +397,10 @@ datos["Centro"] = (
     .str.upper()
 )
 
-# Filtrar Río Loa
+# Filtrar Punta Teatinos
 
 datos = datos[
-    datos["Centro"] == CENTRO_RIO_LOA
+    datos["Centro"] == CENTRO_PUNTA_TEATINOS
 ].copy()
 
 if datos.empty:
@@ -552,7 +551,7 @@ st.markdown(
 busqueda = st.text_input(
     "Buscar material",
     placeholder="Escribe un código o nombre de material...",
-    key="busqueda_consumo_punta-teatinos"
+    key="busqueda_consumo"
 )
 
 catalogo_filtrado = catalogo.copy()
@@ -597,7 +596,7 @@ seleccion = st.selectbox(
     format_func=lambda material: (
         f"{material[0]} -- {material[1]}"
     ),
-    key="selector_consumo_rio_loa"
+    key="selector_consumo_punta_teatinos"
 )
 
 codigo_seleccionado = seleccion[0]
@@ -654,7 +653,7 @@ if len(unidades) > 1:
     unidad_seleccionada = st.selectbox(
         "Unidad de medida",
         options=unidades,
-        key="unidad_consumo_punta_teatinos"
+        key="unidad_consumo"
     )
 
     datos_material = datos_material[
@@ -1210,7 +1209,7 @@ st.markdown(
         padding:15px;
     ">
         ENAEX CHILE | ANÁLISIS DE CONSUMO DE MATERIAS PRIMAS
-        | PUNTA TEATINOS| CENTRO E026
+        | PUNTA TEATINOS | CENTRO E026
     </div>
     """,
     unsafe_allow_html=True
