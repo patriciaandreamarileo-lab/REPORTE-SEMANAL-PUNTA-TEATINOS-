@@ -17,7 +17,7 @@ RUTA_MRP = "data/MRP/Planificacion_MRP.xlsm"
 
 FILA_ENCABEZADOS = 10
 
-CENTRO_RIO_LOA = "E024"
+CENTRO_PUNTA_TEATINOS = "E026"
 
 COLUMNAS_MRP = [
     "Centro",
